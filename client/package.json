@@ -1,5 +1,5 @@
 {
-  "name": "r-simpsons-stats",
+  "name": "r-simpsons-stats-client",
   "version": "0.1.0",
   "private": true,
   "dependencies": {
