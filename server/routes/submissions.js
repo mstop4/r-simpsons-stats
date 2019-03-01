@@ -1,27 +1,23 @@
 const express = require('express');
-const request = require('request');
 const router = express.Router();
+
+const { querySubreddit } = require('../helpers/submissions');
 
 router.get('/', (req, res) => {
   const baseUrl = 'https://api.pushshift.io/reddit/submission/search';
   const query = {
     subreddit: 'TheSimpsons',
-    limit: 50
+    limit: req.query.limit,
   };
 
-  request({
-    url: baseUrl,
-    qs: query
-  }, (error, response, body) => {
+  const startTime = new Date;
+  startTime.setDate(startTime.getDate() - 0);
+  const startUtime = Math.floor(startTime.getTime() / 1000);
 
-    if (error) {
-      res.json(error);
-    }
-
-    else {
-      res.json(JSON.parse(body));
-    }
-  });
+  querySubreddit(baseUrl, query, startUtime, req.query.pages, 250)
+    .then((results) => {
+      res.json(results);
+    });
 });
 
 module.exports = router;
