@@ -10,24 +10,19 @@ app.get('/', (req, res) => {
     limit: 50
   };
 
-  // request.get({
-  //   url: baseUrl,
-  //   qs: query
-  // })
-  request('http://www.google.com')
-    .on('response', (error, response, body) => {
-      if (error) {
-        console.log('Error');
-        console.log(response);
-        res.json(error);
-      }
+  request({
+    url: baseUrl,
+    qs: query
+  }, (error, response, body) => {
 
-      else {
-        console.log('Success!');
-        console.log(response);
-        res.json(body);
-      }
-    });
+    if (error) {
+      res.json(error);
+    }
+
+    else {
+      res.json(JSON.parse(body));
+    }
+  });
 });
 
 app.listen(port, () => console.log(`Example app listening on port ${port}!`));
