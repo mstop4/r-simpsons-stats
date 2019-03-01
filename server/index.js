@@ -1,4 +1,5 @@
 const express = require('express');
+const mongoose = require('mongoose');
 const app = express();
 const port = 5000;
 
@@ -8,4 +9,11 @@ const submissions = require('./routes/submissions');
 app.use('', index);
 app.use('/submissions', submissions);
 
-app.listen(port, () => console.log(`Example app listening on port ${port}!`));
+mongoose.connect('mongodb://localhost/rSimpsonsStats');
+const db = mongoose.connection;
+
+db.on('error', () => console.log('Could not connect to database'));
+db.once('open', () => {
+  console.log('Connected to database');
+  app.listen(port, () => console.log(`r/TheSimpsons Stats server listening on port ${port}!`));
+});

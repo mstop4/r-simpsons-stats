@@ -2,7 +2,8 @@ const request = require('request');
 
 const querySubreddit = (baseUrl, initQuery, startDate, pages, delay) => {
   let processedData = {
-    quoteCount: 0,
+    episodeCount: 0,
+    newsCount: 0,
     ocCount: 0,
     shitpostCount: 0,
     unknownCount: 0,
@@ -50,12 +51,13 @@ const querySubreddit = (baseUrl, initQuery, startDate, pages, delay) => {
 const processSubmissions = (rawData, processedData) => {
   rawData.forEach(sub => {
     const isEpisode = /s0*(\d+)e0*(\d+)/i;
+    const isNews = /news/i;
     const isOC = /oc/i;
     const isShitpost = /shitpost/i;
 
     if (isEpisode.test(sub.link_flair_text)) {
       const processedFlair = isEpisode.exec(sub.link_flair_text);
-      processedData.quoteCount++;
+      processedData.episodeCount++;
 
       const subDetails = {
         season: processedFlair[1],
@@ -65,6 +67,10 @@ const processSubmissions = (rawData, processedData) => {
       };
   
       processedData.submissions.push(subDetails);
+    }
+
+    else if (isNews.test(sub.link_flair_text)) {
+      processedData.newsCount++;
     }
 
     else if (isOC.test(sub.link_flair_text)) {
