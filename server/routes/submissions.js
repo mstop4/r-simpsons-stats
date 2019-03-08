@@ -5,13 +5,19 @@ const { querySubreddit, updateDatabase } = require('../controllers/submissions')
 
 router.get('/', (req, res) => {
   querySubreddit(parseInt(req.query.limit), parseInt(req.query.pages), 250)
-    .then((results) => res.json(results));
+    .then(results => {
+      res.json(results);
+    }, error => {
+      res.send(error);
+    });
 });
 
 router.post('/', (req, res) => {
   updateDatabase(parseInt(req.query.limit), parseInt(req.query.pages))
-    .then((result) => {
-      res.send(result);
+    .then(results => {
+      res.json(results);
+    }, error => {
+      res.send(error);
     });
 });
 

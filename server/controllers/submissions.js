@@ -74,7 +74,17 @@ const querySubreddit = (limit = 10, pages = 1, delay = 250) => {
     }, (error, response, body) => {
 
       if (error) {
-        reject(error);
+        reject({
+          status: 'error',
+          message: 'Cannot connect to external API' 
+        });
+      }
+
+      else if (response.statusCode === 404) {
+        reject({
+          status: 'error',
+          message: 'Cannot find external API resource'
+        });
       }
 
       else {
@@ -89,7 +99,11 @@ const querySubreddit = (limit = 10, pages = 1, delay = 250) => {
         }
 
         else {
-          resolve(processedData);
+          resolve({
+            status: 'ok',
+            message: 'ok',
+            data: {...processedData}
+          });
         }
       }
     });
@@ -101,9 +115,12 @@ const querySubreddit = (limit = 10, pages = 1, delay = 250) => {
 const updateDatabase = (limit = 10, pages = 1) => {
   return new Promise((resolve, reject) => {
     querySubreddit(limit, pages, 250)
-      .then((results) => {
+      .then(results => {
         console.log(results);
         resolve('OK');
+      }, error => {
+        console.log(error);
+        reject('nope');
       });
   });
 };
