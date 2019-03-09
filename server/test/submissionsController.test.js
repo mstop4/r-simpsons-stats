@@ -80,10 +80,9 @@ describe('Submissions Controller', () => {
   });
 
   describe('updateDatabase', () => {
-
     const submissions = require('./data/processedTestData');
     const fakeBulk = { 
-      find: function (query) {
+      find: function () {
         return this;
       },
 
@@ -95,14 +94,59 @@ describe('Submissions Controller', () => {
       execute: sinon.stub().yields(null, { updated: 'ok' })
     };
 
+    beforeEach(() => {
+      fakeBulk.updateOne.resetHistory();
+      fakeBulk.execute.resetHistory();
+    });
+
     it('should update the database', () => {
       const stubBulk = sinon.stub(Submission.collection, 'initializeOrderedBulkOp').returns(fakeBulk);
+      subCon.updateDatabase(submissions);
+      
+      stubBulk.restore();
+      expect(fakeBulk.updateOne.called).to.equal(true);
+      expect(fakeBulk.execute.calledOnce).to.equal(true);
+    });
 
+    it('should not update the database due to an error', () => {
+      const modFakeBulk = {...fakeBulk};
+      modFakeBulk.execute = sinon.stub().yields({ error: 'yes' }, { updated: 'no' });
+      const stubBulk = sinon.stub(Submission.collection, 'initializeOrderedBulkOp').returns(modFakeBulk);
       subCon.updateDatabase(submissions);
 
       stubBulk.restore();
-      expect(fakeBulk.updateOne.called).to.equal(true);
-      expect(fakeBulk.execute.called).to.equal(true);
+      expect(modFakeBulk.updateOne.called).to.equal(true);
+      expect(modFakeBulk.execute.calledOnce).to.equal(true);
+    });
+
+    it('should update the database with no changes', () => {
+      const noSubs = [];
+      const stubBulk = sinon.stub(Submission.collection, 'initializeOrderedBulkOp').returns(fakeBulk);
+      subCon.updateDatabase(noSubs);
+
+      stubBulk.restore();
+      expect(fakeBulk.updateOne.called).to.equal(false);
+      expect(fakeBulk.execute.calledOnce).to.equal(true);
+    });
+    
+    it('should not update the database due to bad data', () => {
+      const wrongSubs = { name: 'Homer Thompson' };
+      const stubBulk = sinon.stub(Submission.collection, 'initializeOrderedBulkOp').returns(fakeBulk);
+      subCon.updateDatabase(wrongSubs);
+
+      stubBulk.restore();
+      expect(fakeBulk.updateOne.called).to.equal(false);
+      expect(fakeBulk.execute.calledOnce).to.equal(false);
+    });
+
+    it('should not update the database due to undefined data', () => {
+      const wrongSubs = undefined;
+      const stubBulk = sinon.stub(Submission.collection, 'initializeOrderedBulkOp').returns(fakeBulk);
+      subCon.updateDatabase(wrongSubs);
+
+      stubBulk.restore();
+      expect(fakeBulk.updateOne.called).to.equal(false);
+      expect(fakeBulk.execute.calledOnce).to.equal(false);
     });
   });
 });

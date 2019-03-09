@@ -120,6 +120,12 @@ const querySubreddit = (limit = 10, pages = 1, delay = 250) => {
 };
 
 const updateDatabase = (data) => {
+
+  if (!data || !(data instanceof Array)) {
+    console.log('Could not update database: bad data.');
+    return;
+  }
+
   console.log('Updating database...');
   let bulk = Submission.collection.initializeOrderedBulkOp();
 
@@ -129,7 +135,7 @@ const updateDatabase = (data) => {
 
   bulk.execute((error, result) => {
     if (error) {
-      console.log('Could not update database.');
+      console.log('Could not update database: write failed.');
       console.log(error);
     }
 
