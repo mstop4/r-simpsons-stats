@@ -4,9 +4,13 @@ const router = express.Router();
 const { queryDatabase, getSubmissions } = require('../controllers/submissionsController');
 
 router.get('/', (req, res) => {
-  queryDatabase({
-    season: parseInt(req.query.season)
-  })
+  const query = {};
+
+  if (req.query.season !== '0') {
+    query.season = parseInt(req.query.season);
+  }
+
+  queryDatabase(query, parseInt(req.query.limit))
     .then(results => {
       res.json(results);
     }, error => {

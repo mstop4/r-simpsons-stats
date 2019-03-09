@@ -2,6 +2,12 @@ const request = require('request');
 const Submission = require('../schemas/Submission');
 
 const processSubmissions = (rawData, processedData) => {
+
+  // Check for invalid arguments
+  if (!rawData || !processedData || !processedData.submissions) {
+    return processedData;
+  }
+
   rawData.forEach(sub => {
     const isEpisode = /s0*(\d+)e0*(\d+)/i;
     const isNews = /news/i;
@@ -146,9 +152,9 @@ const getSubmissions = (limit = 10, pages = 1) => {
   });
 };
 
-const queryDatabase = (query) => {
+const queryDatabase = (query, limit) => {
   return new Promise((resolve, reject) => {
-    Submission.find(query, (err, subs) => {
+    Submission.find(query, null, {limit: limit}, (err, subs) => {
       if (err) {
         reject({
           status: 'error',
