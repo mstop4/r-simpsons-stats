@@ -14,8 +14,8 @@ const processSubmissions = (rawData, processedData) => {
 
       const subDetails = {
         id: sub.id,
-        season: processedFlair[1],
-        episode: processedFlair[2],
+        season: parseInt(processedFlair[1]),
+        episode: parseInt(processedFlair[2]),
         score: sub.score,
         link: `https://reddit.com${sub.permalink}`
       };
@@ -114,7 +114,7 @@ const querySubreddit = (limit = 10, pages = 1, delay = 250) => {
 };
 
 const updateDatabase = (data) => {
-  console.log('updating database...');
+  console.log('Updating database...');
   let bulk = Submission.collection.initializeOrderedBulkOp();
 
   data.forEach(sub => {
@@ -123,7 +123,7 @@ const updateDatabase = (data) => {
 
   bulk.execute((error, result) => {
     if (error) {
-      console.log('Could not updating database.');
+      console.log('Could not update database.');
       console.log(error);
     }
 
@@ -146,9 +146,29 @@ const getSubmissions = (limit = 10, pages = 1) => {
   });
 };
 
+const queryDatabase = (query) => {
+  return new Promise((resolve, reject) => {
+    Submission.find(query, (err, subs) => {
+      if (err) {
+        reject({
+          status: 'error',
+          message: 'Could not query database.'
+        });
+      }
+  
+      resolve({
+        status: 'ok',
+        message: 'ok',
+        data: subs
+      });
+    });
+  });
+};
+
 module.exports = {
   processSubmissions,
   querySubreddit,
   updateDatabase,
-  getSubmissions
+  getSubmissions,
+  queryDatabase
 };

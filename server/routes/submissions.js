@@ -1,14 +1,16 @@
 const express = require('express');
 const router = express.Router();
 
-const { querySubreddit, getSubmissions } = require('../controllers/submissions');
+const { queryDatabase, getSubmissions } = require('../controllers/submissions');
 
 router.get('/', (req, res) => {
-  querySubreddit(parseInt(req.query.limit), parseInt(req.query.pages), 250)
+  queryDatabase({
+    season: parseInt(req.query.season)
+  })
     .then(results => {
       res.json(results);
     }, error => {
-      res.send(error);
+      res.json(error);
     });
 });
 
