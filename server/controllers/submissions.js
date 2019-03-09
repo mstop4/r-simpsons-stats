@@ -68,6 +68,7 @@ const querySubreddit = (limit = 10, pages = 1, delay = 250) => {
   let currentPage = 0;
 
   const makeRequest = (resolve, reject) => {
+    console.log(`On page ${currentPage+1} of ${pages}`);
     request({
       url: baseUrl,
       qs: query
@@ -112,15 +113,35 @@ const querySubreddit = (limit = 10, pages = 1, delay = 250) => {
   return new Promise((resolve, reject) => makeRequest(resolve, reject)); 
 };
 
-const updateDatabase = (limit = 10, pages = 1) => {
+const updateDatabase = (data) => {
+  console.log('updating database...');
+  let bulk = Submission.collection.initializeOrderedBulkOp();
+
+  data.forEach(sub => {
+    bulk.find({ id: sub.id }).upsert().updateOne(sub);
+  });
+
+  bulk.execute((error, result) => {
+    if (error) {
+      console.log('Could not updating database.');
+      console.log(error);
+    }
+
+    else {
+      console.log('Finished updating database!');
+      console.log(result);
+    }
+  });
+};
+
+const getSubmissions = (limit = 10, pages = 1) => {
   return new Promise((resolve, reject) => {
     querySubreddit(limit, pages, 250)
       .then(results => {
-        console.log(results);
-        resolve('OK');
+        updateDatabase(results.data.submissions);
+        resolve(results);
       }, error => {
-        console.log(error);
-        reject('nope');
+        reject(error);
       });
   });
 };
@@ -128,5 +149,6 @@ const updateDatabase = (limit = 10, pages = 1) => {
 module.exports = {
   processSubmissions,
   querySubreddit,
-  updateDatabase
+  updateDatabase,
+  getSubmissions
 };

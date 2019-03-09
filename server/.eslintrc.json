@@ -17,7 +17,7 @@
             "error",
             "windows"
         ],
-        "no-console": "warn",
+        "no-console": "off",
         "quotes": [
             "error",
             "single"
