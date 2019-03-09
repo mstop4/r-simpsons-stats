@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 
-const { queryDatabase, getSubmissions } = require('../controllers/submissions');
+const { queryDatabase, getSubmissions } = require('../controllers/submissionsController');
 
 router.get('/', (req, res) => {
   queryDatabase({
