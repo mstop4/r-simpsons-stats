@@ -12,11 +12,15 @@ app.use(morgan('tiny'));
 app.use('', index);
 app.use('/submissions', submissions);
 
-mongoose.connect('mongodb://localhost/rSimpsonsStats');
+if (process.env.ENV === 'test') {
+  mongoose.connect('mongodb://localhost/rSimpsonsStats_test');
+} else {
+  mongoose.connect('mongodb://localhost/rSimpsonsStats');
+}
 const db = mongoose.connection;
 
 db.on('error', () => console.log('Could not connect to database'));
 db.once('open', () => {
   console.log('Connected to database');
-  app.listen(port, () => console.log(`r/TheSimpsons Stats server listening on port ${port}!`));
+  app.server = app.listen(port, () => console.log(`r/TheSimpsons Stats server listening on port ${port}!`));
 });
