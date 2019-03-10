@@ -207,7 +207,7 @@ describe('Submissions Controller', () => {
       const result = await subCon.queryDatabase({}, 1, true);
       
       expect(result.status).to.equal('ok');
-      expect(result.message).to.equal('ok - season stats only');
+      expect(result.message).to.equal('season stats only');
       expect(result.data).to.have.length(30);
       fakeFind.restore();
     });
@@ -225,7 +225,7 @@ describe('Submissions Controller', () => {
       const result = await subCon.querySubreddit(10, 5, 250);
 
       expect(result.status).to.equal('ok');
-      expect(result.message).to.equal('ok');
+      expect(result.message).to.equal('required number of submissions processed');
       expect(result.data).to.not.equal(undefined);
       fakeRequest.restore();
     });
@@ -236,7 +236,7 @@ describe('Submissions Controller', () => {
       const result = await subCon.querySubreddit();
 
       expect(result.status).to.equal('ok');
-      expect(result.message).to.equal('ok');
+      expect(result.message).to.equal('required number of submissions processed');
       expect(result.data).to.not.equal(undefined);
       fakeRequest.restore();
     });
@@ -277,13 +277,24 @@ describe('Submissions Controller', () => {
       }
     });
 
+    // it('should prematurely resolve after requesting more ubmissions that available', async () => {
+    //   const fakeRequest = sinon.stub(request, 'get').yields(null, { statusCode: 200 }, processedDataString);
+
+    //   const result = await subCon.querySubreddit(10, 5, -250);
+
+    //   expect(result.status).to.equal('ok');
+    //   expect(result.message).to.equal('required number of submissions processed');
+    //   expect(result.data).to.not.equal(undefined);
+    //   fakeRequest.restore();
+    // });
+
     it('should resolve even with a negative result limit', async () => {
       const fakeRequest = sinon.stub(request, 'get').yields(null, { statusCode: 200 }, processedDataString);
 
       const result = await subCon.querySubreddit(-10, 5, 250);
 
       expect(result.status).to.equal('ok');
-      expect(result.message).to.equal('ok');
+      expect(result.message).to.equal('required number of submissions processed');
       expect(result.data).to.not.equal(undefined);
       fakeRequest.restore();
     });
@@ -294,7 +305,7 @@ describe('Submissions Controller', () => {
       const result = await subCon.querySubreddit(10, -5, 250);
 
       expect(result.status).to.equal('ok');
-      expect(result.message).to.equal('ok');
+      expect(result.message).to.equal('required number of submissions processed');
       expect(result.data).to.not.equal(undefined);
       fakeRequest.restore();
     });
@@ -305,9 +316,55 @@ describe('Submissions Controller', () => {
       const result = await subCon.querySubreddit(10, 5, -250);
 
       expect(result.status).to.equal('ok');
-      expect(result.message).to.equal('ok');
+      expect(result.message).to.equal('required number of submissions processed');
       expect(result.data).to.not.equal(undefined);
       fakeRequest.restore();
+    });
+  });
+
+  describe('checkRateLimit', () => {
+    it('should update default request delay', async () => {
+      const fakeRequest = sinon.stub(request, 'get').yields(null, { statusCode: 200 }, JSON.stringify({ server_ratelimit_per_minute: 200 }));
+
+      const result = await subCon.checkRateLimit();
+
+      expect(result.status).to.equal('ok');
+      expect(result.message).to.equal(310);
+      fakeRequest.restore();
+    });
+
+    it('should be rejected due to inability to connect with external API', async () => {
+      const fakeRequest = sinon.stub(request, 'get').yields({ error: 'yes'}, { statusCode: 404 }, null);
+
+      try {
+        await subCon.checkRateLimit();
+      }
+
+      catch (error) {
+        expect(error.status).to.equal('error');
+        expect(error.message).to.equal('Cannot connect to external API');
+      }
+
+      finally {
+        fakeRequest.restore();
+      }
+    });
+
+    it('should be rejected due to inability to find external API resource', async () => {
+      const fakeRequest = sinon.stub(request, 'get').yields(null, { statusCode: 404 }, null);
+
+      try {
+        await subCon.checkRateLimit();
+      }
+
+      catch (error) {
+        expect(error.status).to.equal('error');
+        expect(error.message).to.equal('Cannot find external API resource');
+      }
+
+      finally {
+        fakeRequest.restore();
+      }
     });
   });
 });

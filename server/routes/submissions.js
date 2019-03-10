@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 
-const { queryDatabase, getSubmissions } = require('../controllers/submissionsController');
+const { queryDatabase, getSubmissions, checkRateLimit } = require('../controllers/submissionsController');
 
 router.get('/', (req, res) => {
   const query = {};
@@ -19,12 +19,15 @@ router.get('/', (req, res) => {
     });
 });
 
-router.post('/', (req, res) => {
-  getSubmissions(parseInt(req.query.limit), parseInt(req.query.pages))
-    .then(results => {
-      res.json(results);
-    }, error => {
-      res.send(error);
+router.update('/', (req, res) => {
+  checkRateLimit()
+    .then(() => {
+      getSubmissions(parseInt(req.query.limit), parseInt(req.query.pages))
+        .then(results => {
+          res.json(results);
+        }, error => {
+          res.send(error);
+        });
     });
 });
 

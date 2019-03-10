@@ -1,5 +1,36 @@
 const request = require('request');
 const Submission = require('../schemas/Submission');
+const delayBuffer = 10;
+let defaultDelay = 250;
+
+const checkRateLimit = () => {
+  return new Promise((resolve, reject) => {
+    request.get('https://api/pushshift.io/meta', (error, response, body) => {
+      if (error) {
+        reject({
+          status: 'error',
+          message: 'Cannot connect to external API' 
+        });
+      }
+  
+      else if (response.statusCode === 404) {
+        reject({
+          status: 'error',
+          message: 'Cannot find external API resource'
+        });
+      }
+  
+      else {
+        const metadata = JSON.parse(body);
+        defaultDelay = 60000 / metadata.server_ratelimit_per_minute + delayBuffer;
+        resolve({
+          status: 'ok',
+          message: defaultDelay
+        });
+      }
+    });
+  });
+};
 
 const processSubmissions = (rawData, processedData) => {
 
@@ -49,7 +80,7 @@ const processSubmissions = (rawData, processedData) => {
   return processedData;
 };
 
-const querySubreddit = (limit = 10, pages = 1, delay = 250) => {
+const querySubreddit = (limit = 10, pages = 1, delay = defaultDelay) => {
   const baseUrl = 'https://api.pushshift.io/reddit/submission/search';
 
   const startTime = new Date;
@@ -96,6 +127,13 @@ const querySubreddit = (limit = 10, pages = 1, delay = 250) => {
 
       else {
         const subs = JSON.parse(body).data;
+        if (subs.length === 0) {
+          resolve({
+            status: 'ok',
+            message: 'more submissions requested than available',
+            data: {...processedData}
+          });
+        }
         processedData = {...processSubmissions(subs, processedData)};
 
         currentPage++;
@@ -108,7 +146,7 @@ const querySubreddit = (limit = 10, pages = 1, delay = 250) => {
         else {
           resolve({
             status: 'ok',
-            message: 'ok',
+            message: 'required number of submissions processed',
             data: {...processedData}
           });
         }
@@ -159,7 +197,7 @@ const updateDatabase = (data) => {
 
 const getSubmissions = (limit = 10, pages = 1) => {
   return new Promise((resolve, reject) => {
-    querySubreddit(limit, pages, 250)
+    querySubreddit(limit, pages, defaultDelay)
       .then(results => {
         updateDatabase(results.data.submissions)
           .then(() => {
@@ -197,7 +235,7 @@ const queryDatabase = (query, limit, seasonStats) => {
 
         resolve({
           status: 'ok',
-          message: 'ok - season stats only',
+          message: 'season stats only',
           data: stats
         });
       }
@@ -212,6 +250,7 @@ const queryDatabase = (query, limit, seasonStats) => {
 };
 
 module.exports = {
+  checkRateLimit,
   processSubmissions,
   querySubreddit,
   updateDatabase,
