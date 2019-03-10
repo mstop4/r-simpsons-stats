@@ -149,4 +149,33 @@ describe('Submissions Controller', () => {
       expect(fakeBulk.execute.calledOnce).to.equal(false);
     });
   });
+
+  describe('queryDatabase', () => {
+    it('should resolve with a status of \'ok\'', async () => {
+      const fakeFind = sinon.stub(Submission, 'find').yields(null, { subs: [1, 2, 3] });
+      const result = await subCon.queryDatabase({}, 1);
+      
+      expect(result.status).to.equal('ok');
+      expect(result.message).to.equal('ok');
+      expect(result.data).to.not.equal(undefined);
+      fakeFind.restore();
+    });
+
+    it('should be rejected with a status of \'error\'', async () => {
+      const fakeFind = sinon.stub(Submission, 'find').yields({ error: 'yes' }, null);
+      try {
+        await subCon.queryDatabase({}, 1);
+      } 
+      
+      catch (error) {
+        expect(error.status).to.equal('error');
+        expect(error.message).to.equal('Could not query database.');
+        expect(error.data).to.equal(undefined);
+      } 
+      
+      finally {
+        fakeFind.restore();
+      }
+    });
+  });
 });
