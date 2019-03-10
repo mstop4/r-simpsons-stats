@@ -4,6 +4,9 @@ const sinon = require('sinon');
 const Submission = require('../schemas/Submission');
 const subCon = require('../controllers/submissionsController');
 
+const processedTestData = require('./data/processedTestData');
+const rawTestData = require('./data/rawTestData');
+
 process.env.ENV = 'test';
 
 describe('Submissions Controller', () => {
@@ -23,7 +26,6 @@ describe('Submissions Controller', () => {
     };
 
     it('should process and tally all submissions', () => {
-      const rawData = require('./data/rawTestData.js');
       const processedData = {
         episodeCount: 0,
         newsCount: 0,
@@ -33,7 +35,7 @@ describe('Submissions Controller', () => {
         submissions: []
       };
   
-      subCon.processSubmissions(rawData, processedData);
+      subCon.processSubmissions(rawTestData, processedData);
 
       expect(processedData.episodeCount).to.equal(9);
       expect(processedData.newsCount).to.equal(0);
@@ -62,26 +64,23 @@ describe('Submissions Controller', () => {
     });
 
     it('should process nothing with invalid process data container', () => {
-      const rawData = require('./data/rawTestData.js');
       const processedData = {...invalidProcessedData};
   
-      subCon.processSubmissions(rawData, processedData);
+      subCon.processSubmissions(rawTestData, processedData);
   
       expect(processedData).to.deep.equal(invalidProcessedData);
     });
 
     it('should process nothing with no process data container', () => {
-      const rawData = require('./data/rawTestData.js');
       const processedData = undefined;
   
-      subCon.processSubmissions(rawData, processedData);
+      subCon.processSubmissions(rawTestData, processedData);
   
       expect(processedData).to.equal(undefined);
     });
   });
 
   describe('updateDatabase', () => {
-    const submissions = require('./data/processedTestData');
     const fakeBulk = { 
       find: function () {
         return this;
@@ -102,7 +101,7 @@ describe('Submissions Controller', () => {
 
     it('should update the database', async () => {
       const stubBulk = sinon.stub(Submission.collection, 'initializeOrderedBulkOp').returns(fakeBulk);
-      await subCon.updateDatabase(submissions);
+      await subCon.updateDatabase(processedTestData);
       
       expect(fakeBulk.updateOne.called).to.equal(true);
       expect(fakeBulk.execute.calledOnce).to.equal(true);
@@ -115,7 +114,7 @@ describe('Submissions Controller', () => {
       const stubBulk = sinon.stub(Submission.collection, 'initializeOrderedBulkOp').returns(modFakeBulk);
       
       try {
-        await subCon.updateDatabase(submissions);
+        await subCon.updateDatabase(processedTestData);
       }
       
       catch (error) {
@@ -177,8 +176,8 @@ describe('Submissions Controller', () => {
 
   describe('queryDatabase', () => {
     it('should resolve with a status of \'ok\'', async () => {
-      const fakeFind = sinon.stub(Submission, 'find').yields(null, { subs: [1, 2, 3] });
-      const result = await subCon.queryDatabase({}, 1);
+      const fakeFind = sinon.stub(Submission, 'find').yields(null, [1, 2, 3] );
+      const result = await subCon.queryDatabase({}, 1, false);
       
       expect(result.status).to.equal('ok');
       expect(result.message).to.equal('ok');
@@ -189,7 +188,7 @@ describe('Submissions Controller', () => {
     it('should be rejected with a status of \'error\'', async () => {
       const fakeFind = sinon.stub(Submission, 'find').yields({ error: 'yes' }, null);
       try {
-        await subCon.queryDatabase({}, 1);
+        await subCon.queryDatabase({}, 1, false);
       } 
       
       catch (error) {
@@ -202,17 +201,26 @@ describe('Submissions Controller', () => {
         fakeFind.restore();
       }
     });
+
+    it('should resolve with season stats only', async () => {
+      const fakeFind = sinon.stub(Submission, 'find').yields(null, processedTestData);
+      const result = await subCon.queryDatabase({}, 1, true);
+      
+      expect(result.status).to.equal('ok');
+      expect(result.message).to.equal('ok - season stats only');
+      expect(result.data).to.have.length(30);
+      fakeFind.restore();
+    });
   });
 
   describe('querySubreddit', () => {
-    const processedData = require('./data/processedTestData');
-    const processSubmissions = sinon.stub().returns(processedData);
-    const rawData = JSON.stringify({
-      data: require('./data/processedTestData')
+    const processSubmissions = sinon.stub().returns(processedTestData);
+    const processedDataString = JSON.stringify({
+      data: processedTestData
     });
 
     it('should resolve with supplied arguments', async () => {
-      const fakeRequest = sinon.stub(request, 'get').yields(null, { statusCode: 200 }, rawData);
+      const fakeRequest = sinon.stub(request, 'get').yields(null, { statusCode: 200 }, processedDataString);
 
       const result = await subCon.querySubreddit(10, 5, 250);
 
@@ -223,7 +231,7 @@ describe('Submissions Controller', () => {
     });
 
     it('should resolve using default arguments', async () => {
-      const fakeRequest = sinon.stub(request, 'get').yields(null, { statusCode: 200 }, rawData);
+      const fakeRequest = sinon.stub(request, 'get').yields(null, { statusCode: 200 }, processedDataString);
 
       const result = await subCon.querySubreddit();
 
@@ -270,7 +278,7 @@ describe('Submissions Controller', () => {
     });
 
     it('should resolve even with a negative result limit', async () => {
-      const fakeRequest = sinon.stub(request, 'get').yields(null, { statusCode: 200 }, rawData);
+      const fakeRequest = sinon.stub(request, 'get').yields(null, { statusCode: 200 }, processedDataString);
 
       const result = await subCon.querySubreddit(-10, 5, 250);
 
@@ -281,7 +289,7 @@ describe('Submissions Controller', () => {
     });
 
     it('should resolve even with a negative page limit', async () => {
-      const fakeRequest = sinon.stub(request, 'get').yields(null, { statusCode: 200 }, rawData);
+      const fakeRequest = sinon.stub(request, 'get').yields(null, { statusCode: 200 }, processedDataString);
 
       const result = await subCon.querySubreddit(10, -5, 250);
 
@@ -292,7 +300,7 @@ describe('Submissions Controller', () => {
     });
 
     it('should resolve even with a negative delay', async () => {
-      const fakeRequest = sinon.stub(request, 'get').yields(null, { statusCode: 200 }, rawData);
+      const fakeRequest = sinon.stub(request, 'get').yields(null, { statusCode: 200 }, processedDataString);
 
       const result = await subCon.querySubreddit(10, 5, -250);
 

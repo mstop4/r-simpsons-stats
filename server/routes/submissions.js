@@ -5,12 +5,13 @@ const { queryDatabase, getSubmissions } = require('../controllers/submissionsCon
 
 router.get('/', (req, res) => {
   const query = {};
+  const seasonStats = req.query.seasonstats ? req.query.seasonstats.toLowerCase() === 'true' : false;
 
   if (req.query.season !== '0') {
     query.season = parseInt(req.query.season);
   }
 
-  queryDatabase(query, parseInt(req.query.limit))
+  queryDatabase(query, parseInt(req.query.limit), seasonStats)
     .then(results => {
       res.json(results);
     }, error => {

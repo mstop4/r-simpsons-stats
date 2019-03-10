@@ -5,17 +5,17 @@ class App extends Component {
   constructor(props) {
     super(props);
     this.state = {
-      seasonCount: []
+      seasonCounts: []
     };
   }
 
   componentDidMount() {
-    fetch('/submissions?season=2')
+    fetch('/submissions?season=0&seasonstats=true')
       .then(res => res.json())
       .then(result => {
         if (result.status === 'ok') {
           this.setState({
-            seasonCount: result.data.length
+            seasonCounts: result.data
           });
         }
       });
@@ -24,7 +24,7 @@ class App extends Component {
   render() {
     return (
       <div className="App">
-        <p>Season 2: {this.state.seasonCount}</p>
+        {this.state.seasonCounts.map((season, i) => (<p key={i}>Season {i+1}: {season}</p>))}
       </div>
     );
   }

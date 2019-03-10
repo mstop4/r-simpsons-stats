@@ -162,7 +162,7 @@ const getSubmissions = (limit = 10, pages = 1) => {
     querySubreddit(limit, pages, 250)
       .then(results => {
         updateDatabase(results.data.submissions)
-          .then( _ => {
+          .then(() => {
             resolve(results);
           });
       }, error => {
@@ -171,7 +171,9 @@ const getSubmissions = (limit = 10, pages = 1) => {
   });
 };
 
-const queryDatabase = (query, limit) => {
+const queryDatabase = (query, limit, seasonStats) => {
+  const numSeasons = 30;
+
   return new Promise((resolve, reject) => {
     Submission.find(query, null, {limit: limit}, (err, subs) => {
       if (err) {
@@ -180,7 +182,26 @@ const queryDatabase = (query, limit) => {
           message: 'Could not query database.'
         });
       }
-  
+
+      if (seasonStats) {
+        const stats = [];
+        for (let i = 0; i < numSeasons; i++) {
+          stats.push(0);
+        }
+
+        subs.forEach(sub => {
+          if (sub.season < numSeasons) {
+            stats[sub.season-1]++;
+          }
+        });
+
+        resolve({
+          status: 'ok',
+          message: 'ok - season stats only',
+          data: stats
+        });
+      }
+
       resolve({
         status: 'ok',
         message: 'ok',
