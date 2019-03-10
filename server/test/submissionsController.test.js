@@ -1,3 +1,4 @@
+const request = require('request');
 const expect = require('chai').expect;
 const sinon = require('sinon');
 const Submission = require('../schemas/Submission');
@@ -200,6 +201,105 @@ describe('Submissions Controller', () => {
       finally {
         fakeFind.restore();
       }
+    });
+  });
+
+  describe('querySubreddit', () => {
+    const processedData = require('./data/processedTestData');
+    const processSubmissions = sinon.stub().returns(processedData);
+    const rawData = JSON.stringify({
+      data: require('./data/processedTestData')
+    });
+
+    it('should resolve with supplied arguments', async () => {
+      const fakeRequest = sinon.stub(request, 'get').yields(null, { statusCode: 200 }, rawData);
+
+      const result = await subCon.querySubreddit(10, 5, 250);
+
+      expect(result.status).to.equal('ok');
+      expect(result.message).to.equal('ok');
+      expect(result.data).to.not.equal(undefined);
+      fakeRequest.restore();
+    });
+
+    it('should resolve using default arguments', async () => {
+      const fakeRequest = sinon.stub(request, 'get').yields(null, { statusCode: 200 }, rawData);
+
+      const result = await subCon.querySubreddit();
+
+      expect(result.status).to.equal('ok');
+      expect(result.message).to.equal('ok');
+      expect(result.data).to.not.equal(undefined);
+      fakeRequest.restore();
+    });
+
+    it('should be rejected due to inability to connect with external API', async () => {
+      const fakeRequest = sinon.stub(request, 'get').yields({ error: 'yes'}, { statusCode: 404 }, null);
+
+      try {
+        await subCon.querySubreddit(10, 5, 250);
+      }
+
+      catch (error) {
+        expect(error.status).to.equal('error');
+        expect(error.message).to.equal('Cannot connect to external API');
+        expect(error.data).to.equal(undefined);
+      }
+
+      finally {
+        fakeRequest.restore();
+      }
+    });
+
+    it('should be rejected due to inability to find external API resource', async () => {
+      const fakeRequest = sinon.stub(request, 'get').yields(null, { statusCode: 404 }, null);
+
+      try {
+        await subCon.querySubreddit(10, 5, 250);
+      }
+
+      catch (error) {
+        expect(error.status).to.equal('error');
+        expect(error.message).to.equal('Cannot find external API resource');
+        expect(error.data).to.equal(undefined);
+      }
+
+      finally {
+        fakeRequest.restore();
+      }
+    });
+
+    it('should resolve even with a negative result limit', async () => {
+      const fakeRequest = sinon.stub(request, 'get').yields(null, { statusCode: 200 }, rawData);
+
+      const result = await subCon.querySubreddit(-10, 5, 250);
+
+      expect(result.status).to.equal('ok');
+      expect(result.message).to.equal('ok');
+      expect(result.data).to.not.equal(undefined);
+      fakeRequest.restore();
+    });
+
+    it('should resolve even with a negative page limit', async () => {
+      const fakeRequest = sinon.stub(request, 'get').yields(null, { statusCode: 200 }, rawData);
+
+      const result = await subCon.querySubreddit(10, -5, 250);
+
+      expect(result.status).to.equal('ok');
+      expect(result.message).to.equal('ok');
+      expect(result.data).to.not.equal(undefined);
+      fakeRequest.restore();
+    });
+
+    it('should resolve even with a negative delay', async () => {
+      const fakeRequest = sinon.stub(request, 'get').yields(null, { statusCode: 200 }, rawData);
+
+      const result = await subCon.querySubreddit(10, 5, -250);
+
+      expect(result.status).to.equal('ok');
+      expect(result.message).to.equal('ok');
+      expect(result.data).to.not.equal(undefined);
+      fakeRequest.restore();
     });
   });
 });

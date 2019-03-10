@@ -75,7 +75,7 @@ const querySubreddit = (limit = 10, pages = 1, delay = 250) => {
 
   const makeRequest = (resolve, reject) => {
     console.log(`On page ${currentPage+1} of ${pages}`);
-    request({
+    request.get({
       url: baseUrl,
       qs: query
     }, (error, response, body) => {
