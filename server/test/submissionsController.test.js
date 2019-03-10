@@ -99,54 +99,78 @@ describe('Submissions Controller', () => {
       fakeBulk.execute.resetHistory();
     });
 
-    it('should update the database', () => {
+    it('should update the database', async () => {
       const stubBulk = sinon.stub(Submission.collection, 'initializeOrderedBulkOp').returns(fakeBulk);
-      subCon.updateDatabase(submissions);
+      await subCon.updateDatabase(submissions);
       
-      stubBulk.restore();
       expect(fakeBulk.updateOne.called).to.equal(true);
       expect(fakeBulk.execute.calledOnce).to.equal(true);
+      stubBulk.restore();
     });
 
-    it('should not update the database due to an error', () => {
+    it('should not update the database due to an error', async () => {
       const modFakeBulk = {...fakeBulk};
       modFakeBulk.execute = sinon.stub().yields({ error: 'yes' }, { updated: 'no' });
       const stubBulk = sinon.stub(Submission.collection, 'initializeOrderedBulkOp').returns(modFakeBulk);
-      subCon.updateDatabase(submissions);
-
-      stubBulk.restore();
-      expect(modFakeBulk.updateOne.called).to.equal(true);
-      expect(modFakeBulk.execute.calledOnce).to.equal(true);
+      
+      try {
+        await subCon.updateDatabase(submissions);
+      }
+      
+      catch (error) {
+        expect(modFakeBulk.updateOne.called).to.equal(true);
+        expect(modFakeBulk.execute.calledOnce).to.equal(true);
+      }
+      
+      finally {
+        stubBulk.restore();
+      }
     });
 
-    it('should update the database with no changes', () => {
+    it('should update the database with no changes', async () => {
       const noSubs = [];
       const stubBulk = sinon.stub(Submission.collection, 'initializeOrderedBulkOp').returns(fakeBulk);
-      subCon.updateDatabase(noSubs);
 
-      stubBulk.restore();
+      await subCon.updateDatabase(noSubs);
       expect(fakeBulk.updateOne.called).to.equal(false);
       expect(fakeBulk.execute.calledOnce).to.equal(true);
+      stubBulk.restore();
     });
     
-    it('should not update the database due to bad data', () => {
+    it('should not update the database due to bad data', async () => {
       const wrongSubs = { name: 'Homer Thompson' };
       const stubBulk = sinon.stub(Submission.collection, 'initializeOrderedBulkOp').returns(fakeBulk);
-      subCon.updateDatabase(wrongSubs);
 
-      stubBulk.restore();
-      expect(fakeBulk.updateOne.called).to.equal(false);
-      expect(fakeBulk.execute.calledOnce).to.equal(false);
+      try {
+        await subCon.updateDatabase(wrongSubs);
+      }
+      
+      catch (error) {
+        expect(fakeBulk.updateOne.called).to.equal(false);
+        expect(fakeBulk.execute.calledOnce).to.equal(false);
+      }
+      
+      finally {
+        stubBulk.restore();
+      }
     });
 
-    it('should not update the database due to undefined data', () => {
+    it('should not update the database due to undefined data', async () => {
       const wrongSubs = undefined;
       const stubBulk = sinon.stub(Submission.collection, 'initializeOrderedBulkOp').returns(fakeBulk);
-      subCon.updateDatabase(wrongSubs);
 
-      stubBulk.restore();
-      expect(fakeBulk.updateOne.called).to.equal(false);
-      expect(fakeBulk.execute.calledOnce).to.equal(false);
+      try {
+        await subCon.updateDatabase(wrongSubs);
+      }
+      
+      catch (error) {
+        expect(fakeBulk.updateOne.called).to.equal(false);
+        expect(fakeBulk.execute.calledOnce).to.equal(false);
+      }
+      
+      finally {
+        stubBulk.restore();
+      }
     });
   });
 

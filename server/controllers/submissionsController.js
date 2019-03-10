@@ -120,29 +120,40 @@ const querySubreddit = (limit = 10, pages = 1, delay = 250) => {
 };
 
 const updateDatabase = (data) => {
-
-  if (!data || !(data instanceof Array)) {
-    console.log('Could not update database: bad data.');
-    return;
-  }
-
-  console.log('Updating database...');
-  let bulk = Submission.collection.initializeOrderedBulkOp();
-
-  data.forEach(sub => {
-    bulk.find({ id: sub.id }).upsert().updateOne(sub);
-  });
-
-  bulk.execute((error, result) => {
-    if (error) {
-      console.log('Could not update database: write failed.');
-      console.log(error);
+  return new Promise ((resolve, reject) => {
+    if (!data || !(data instanceof Array)) {
+      reject({
+        status: 'error',
+        message: 'Could not update database: bad data.'
+      });
     }
 
-    else {
-      console.log('Finished updating database!');
-      console.log(result);
+    if (process.env.ENV !== 'test') {
+      console.log('Updating database...');
     }
+    
+    let bulk = Submission.collection.initializeOrderedBulkOp();
+
+    data.forEach(sub => {
+      bulk.find({ id: sub.id }).upsert().updateOne(sub);
+    });
+  
+    bulk.execute((error, result) => {
+      if (error) {
+        reject({
+          status: 'error',
+          message: 'Could not update database: write failed.'
+        });
+      }
+  
+      else {
+        resolve({
+          status: 'ok',
+          message: 'Finished updating database!',
+          result: result
+        });
+      }
+    });
   });
 };
 
@@ -150,8 +161,10 @@ const getSubmissions = (limit = 10, pages = 1) => {
   return new Promise((resolve, reject) => {
     querySubreddit(limit, pages, 250)
       .then(results => {
-        updateDatabase(results.data.submissions);
-        resolve(results);
+        updateDatabase(results.data.submissions)
+          .then( _ => {
+            resolve(results);
+          });
       }, error => {
         reject(error);
       });
