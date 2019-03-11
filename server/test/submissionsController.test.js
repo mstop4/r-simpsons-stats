@@ -133,7 +133,7 @@ describe('Submissions Controller', () => {
 
       await subCon.updateDatabase(noSubs);
       expect(fakeBulk.updateOne.called).to.equal(false);
-      expect(fakeBulk.execute.calledOnce).to.equal(true);
+      expect(fakeBulk.execute.calledOnce).to.equal(false);
       stubBulk.restore();
     });
     
@@ -219,13 +219,13 @@ describe('Submissions Controller', () => {
       data: rawTestData
     });
 
-    // TODO: Test "before" argument with something other than null
+    // TODO: Test "before" and "after" arguments with something other than null and undefined
     //       Test cases where the server requests more submissions than the API can provide
 
     it('should resolve with supplied arguments', async () => {
       const fakeRequest = sinon.stub(request, 'get').yields(null, { statusCode: 200 }, rawDataString);
 
-      const result = await subCon.querySubreddit(10, 5, null, 250);
+      const result = await subCon.querySubreddit(10, 5, null, undefined, 250);
 
       expect(result.status).to.equal('ok');
       expect(result.message).to.equal('all 45 submissions processed');
@@ -248,7 +248,7 @@ describe('Submissions Controller', () => {
       const fakeRequest = sinon.stub(request, 'get').yields({ error: 'yes'}, { statusCode: 404 }, null);
 
       try {
-        await subCon.querySubreddit(10, 5, null, 250);
+        await subCon.querySubreddit(10, 5, null, undefined, 250);
       }
 
       catch (error) {
@@ -266,7 +266,7 @@ describe('Submissions Controller', () => {
       const fakeRequest = sinon.stub(request, 'get').yields(null, { statusCode: 404 }, null);
 
       try {
-        await subCon.querySubreddit(10, 5, null, 250);
+        await subCon.querySubreddit(10, 5, null, undefined, 250);
       }
 
       catch (error) {
@@ -283,7 +283,7 @@ describe('Submissions Controller', () => {
     // it('should prematurely resolve after requesting more submissions that available', async () => {
     //   const fakeRequest = sinon.stub(request, 'get').yields(null, { statusCode: 200 }, processedDataString);
 
-    //   const result = await subCon.querySubreddit(10, 5, null, -250);
+    //   const result = await subCon.querySubreddit(10, 5, null, undefined, -250);
 
     //   expect(result.status).to.equal('ok');
     //   expect(result.message).to.equal('only 45 submissions processed');
@@ -294,7 +294,7 @@ describe('Submissions Controller', () => {
     it('should resolve even with a negative result limit', async () => {
       const fakeRequest = sinon.stub(request, 'get').yields(null, { statusCode: 200 }, rawDataString);
 
-      const result = await subCon.querySubreddit(-10, 5, null, 250);
+      const result = await subCon.querySubreddit(-10, 5, null, undefined, 250);
 
       expect(result.status).to.equal('ok');
       expect(result.message).to.equal('all 45 submissions processed');
@@ -305,7 +305,7 @@ describe('Submissions Controller', () => {
     it('should resolve even with a negative page limit', async () => {
       const fakeRequest = sinon.stub(request, 'get').yields(null, { statusCode: 200 }, rawDataString);
 
-      const result = await subCon.querySubreddit(10, -5, null, 250);
+      const result = await subCon.querySubreddit(10, -5, null, undefined, 250);
 
       expect(result.status).to.equal('ok');
       expect(result.message).to.equal('all 9 submissions processed');
@@ -316,7 +316,7 @@ describe('Submissions Controller', () => {
     it('should resolve even with a negative delay', async () => {
       const fakeRequest = sinon.stub(request, 'get').yields(null, { statusCode: 200 }, rawDataString);
 
-      const result = await subCon.querySubreddit(10, 5, null, -250);
+      const result = await subCon.querySubreddit(10, 5, null, undefined, -250);
 
       expect(result.status).to.equal('ok');
       expect(result.message).to.equal('all 45 submissions processed');
@@ -332,7 +332,7 @@ describe('Submissions Controller', () => {
       const result = await subCon.checkRateLimit();
 
       expect(result.status).to.equal('ok');
-      expect(result.message).to.equal(310);
+      expect(result.message).to.equal(300);
       fakeRequest.restore();
     });
 

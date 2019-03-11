@@ -33,6 +33,44 @@ const checkRateLimit = () => {
   });
 };
 
+const getOldestSubFromDB = () => {
+  return new Promise((resolve, reject) => {
+    Submission.findOne({}, null, { sort: {date: -1} }, (err, sub) => {
+      if (err) {
+        reject({
+          status: 'error',
+          message: 'Could not query database.'
+        });
+      }
+
+      resolve({
+        status: 'ok',
+        message: 'ok',
+        data: sub
+      });
+    });
+  });
+};
+
+const getNewestSubFromDB = () => {
+  return new Promise((resolve, reject) => {
+    Submission.findOne({}, null, { sort: {date: 1} }, (err, sub) => {
+      if (err) {
+        reject({
+          status: 'error',
+          message: 'Could not query database.'
+        });
+      }
+
+      resolve({
+        status: 'ok',
+        message: 'ok',
+        data: sub
+      });
+    });
+  });
+};
+
 const processSubmissions = (rawData, processedData) => {
 
   // Check for invalid arguments
@@ -55,6 +93,7 @@ const processSubmissions = (rawData, processedData) => {
         season: parseInt(processedFlair[1]),
         episode: parseInt(processedFlair[2]),
         score: sub.score,
+        date: sub.created_utc,
         link: `https://reddit.com${sub.permalink}`
       };
 
@@ -81,13 +120,13 @@ const processSubmissions = (rawData, processedData) => {
   return processedData;
 };
 
-const querySubreddit = (limit = 10, pages = 1, before, after = 0, delay = defaultDelay) => {
+const querySubreddit = (limit = 10, pages = 1, before, after, delay = defaultDelay) => {
   const baseUrl = 'https://api.pushshift.io/reddit/submission/search';
   let startUtime;
+  let endUtime;
 
-  if (!before) {
+  if (before !== 0 && !before) {
     const startTime = new Date;
-    startTime.setDate(startTime.getDate() - 0);
     startUtime = Math.floor(startTime.getTime() / 1000);
   }
 
@@ -95,11 +134,15 @@ const querySubreddit = (limit = 10, pages = 1, before, after = 0, delay = defaul
     startUtime = before;
   }
 
+  endUtime = after !== 0 && !after ? 0 : after; 
+
   const query = {
     subreddit: 'TheSimpsons',
     limit: parseInt(limit) || 10,
     before: startUtime,
-    after: after
+    after: endUtime,
+    sort: 'desc',
+    sort_type: 'created_utc'
   };
 
   let processedData = {
@@ -117,6 +160,7 @@ const querySubreddit = (limit = 10, pages = 1, before, after = 0, delay = defaul
     process.stdout.clearLine();
     process.stdout.cursorTo(0);
     process.stdout.write(`On page ${currentPage + 1} of ${pages}`);
+
     request.get({
       url: baseUrl,
       qs: query
@@ -138,6 +182,7 @@ const querySubreddit = (limit = 10, pages = 1, before, after = 0, delay = defaul
 
       else {
         const subs = JSON.parse(body).data;
+
         if (subs.length === 0) {
           resolve({
             status: 'ok',
@@ -150,7 +195,7 @@ const querySubreddit = (limit = 10, pages = 1, before, after = 0, delay = defaul
         currentPage++;
 
         if (currentPage < pages) {
-          query.before = subs[subs.length - 1].created_utc + 1;
+          query.before = subs[subs.length - 1].created_utc;
           setTimeout(() => makeRequest(resolve, reject), delay);
         }
 
@@ -178,7 +223,7 @@ const updateDatabase = (data) => {
     }
 
     if (process.env.ENV !== 'test') {
-      console.log('Updating database...');
+      console.log('\nUpdating database...');
     }
 
     let bulk = Submission.collection.initializeOrderedBulkOp();
@@ -216,22 +261,30 @@ const updateDatabase = (data) => {
       }
     });
 
-    bulk.execute((error) => {
-      console.log('\nExecuting final batch...');
-      if (error) {
-        reject({
-          status: 'error',
-          message: 'Could not update database: write failed.'
-        });
-      }
+    if (counter > 0) {
+      bulk.execute((error) => {
+        console.log('\nExecuting final batch...');
+        if (error) {
+          reject({
+            status: 'error',
+            message: 'Could not update database: write failed.'
+          });
+        }
 
-      else {
-        console.log('Done!');
-        resolve({
-          status: 'ok',
-          message: 'Finished updating database!',
-        });
-      }
+        else {
+          console.log('Done!');
+          resolve({
+            status: 'ok',
+            message: 'Finished updating database!',
+          });
+        }
+      });
+    }
+
+    console.log('Done!');
+    resolve({
+      status: 'ok',
+      message: 'Finished updating database!',
     });
   });
 };
@@ -292,6 +345,8 @@ const queryDatabase = (query, limit, seasonStats) => {
 
 module.exports = {
   checkRateLimit,
+  getOldestSubFromDB,
+  getNewestSubFromDB,
   processSubmissions,
   querySubreddit,
   updateDatabase,

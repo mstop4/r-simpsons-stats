@@ -5,6 +5,7 @@ const submissionSchema = new mongoose.Schema({
   season: Number,
   episode: Number,
   score: Number,
+  date: Number,
   link: String
 });
 
