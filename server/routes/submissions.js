@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 
-const { queryDatabase, getSubmissions, checkRateLimit } = require('../controllers/submissionsController');
+const { queryDatabase, getSubmissions, checkRateLimit, getOldestSubFromDB } = require('../controllers/submissionsController');
 
 router.get('/', (req, res) => {
   const query = {};
@@ -26,9 +26,8 @@ router.put('/updateOldest', (req, res) => {
       console.log('Getting oldest submission...');
       getOldestSubFromDB()
         .then((oldest) => {
-          console.log(`Oldest submission is from ${oldest.date}`);
-          console.log(`Getting submissions before ${oldest.date}...`);
-          getSubmissions(parseInt(req.query.limit), parseInt(req.query.pages), oldest.date)
+          console.log(`Getting submissions before ${oldest.data.date}...`);
+          getSubmissions(parseInt(req.query.limit), parseInt(req.query.pages), oldest.data.date)
             .then(results => {
               res.json(results);
             }, error => {

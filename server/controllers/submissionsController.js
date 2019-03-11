@@ -35,7 +35,7 @@ const checkRateLimit = () => {
 
 const getOldestSubFromDB = () => {
   return new Promise((resolve, reject) => {
-    Submission.findOne({}, null, { sort: {date: -1} }, (err, sub) => {
+    Submission.findOne({}, null, { sort: {date: 1} }, (err, sub) => {
       if (err) {
         reject({
           status: 'error',
@@ -54,7 +54,7 @@ const getOldestSubFromDB = () => {
 
 const getNewestSubFromDB = () => {
   return new Promise((resolve, reject) => {
-    Submission.findOne({}, null, { sort: {date: 1} }, (err, sub) => {
+    Submission.findOne({}, null, { sort: {date: -1} }, (err, sub) => {
       if (err) {
         reject({
           status: 'error',
@@ -281,11 +281,13 @@ const updateDatabase = (data) => {
       });
     }
 
-    console.log('Done!');
-    resolve({
-      status: 'ok',
-      message: 'Finished updating database!',
-    });
+    else {
+      console.log('Done!');
+      resolve({
+        status: 'ok',
+        message: 'Finished updating database!',
+      });
+    }
   });
 };
 
