@@ -215,28 +215,31 @@ describe('Submissions Controller', () => {
 
   describe('querySubreddit', () => {
     const processSubmissions = sinon.stub().returns(processedTestData);
-    const processedDataString = JSON.stringify({
-      data: processedTestData
+    const rawDataString = JSON.stringify({
+      data: rawTestData
     });
 
-    it('should resolve with supplied arguments', async () => {
-      const fakeRequest = sinon.stub(request, 'get').yields(null, { statusCode: 200 }, processedDataString);
+    // TODO: Test "before" argument with something other than null
+    //       Test cases where the server requests more submissions than the API can provide
 
-      const result = await subCon.querySubreddit(10, 5, 250);
+    it('should resolve with supplied arguments', async () => {
+      const fakeRequest = sinon.stub(request, 'get').yields(null, { statusCode: 200 }, rawDataString);
+
+      const result = await subCon.querySubreddit(10, 5, null, 250);
 
       expect(result.status).to.equal('ok');
-      expect(result.message).to.equal('required number of submissions processed');
+      expect(result.message).to.equal('all 45 submissions processed');
       expect(result.data).to.not.equal(undefined);
       fakeRequest.restore();
     });
 
     it('should resolve using default arguments', async () => {
-      const fakeRequest = sinon.stub(request, 'get').yields(null, { statusCode: 200 }, processedDataString);
+      const fakeRequest = sinon.stub(request, 'get').yields(null, { statusCode: 200 }, rawDataString);
 
       const result = await subCon.querySubreddit();
 
       expect(result.status).to.equal('ok');
-      expect(result.message).to.equal('required number of submissions processed');
+      expect(result.message).to.equal('all 9 submissions processed');
       expect(result.data).to.not.equal(undefined);
       fakeRequest.restore();
     });
@@ -245,7 +248,7 @@ describe('Submissions Controller', () => {
       const fakeRequest = sinon.stub(request, 'get').yields({ error: 'yes'}, { statusCode: 404 }, null);
 
       try {
-        await subCon.querySubreddit(10, 5, 250);
+        await subCon.querySubreddit(10, 5, null, 250);
       }
 
       catch (error) {
@@ -263,7 +266,7 @@ describe('Submissions Controller', () => {
       const fakeRequest = sinon.stub(request, 'get').yields(null, { statusCode: 404 }, null);
 
       try {
-        await subCon.querySubreddit(10, 5, 250);
+        await subCon.querySubreddit(10, 5, null, 250);
       }
 
       catch (error) {
@@ -277,46 +280,46 @@ describe('Submissions Controller', () => {
       }
     });
 
-    // it('should prematurely resolve after requesting more ubmissions that available', async () => {
+    // it('should prematurely resolve after requesting more submissions that available', async () => {
     //   const fakeRequest = sinon.stub(request, 'get').yields(null, { statusCode: 200 }, processedDataString);
 
-    //   const result = await subCon.querySubreddit(10, 5, -250);
+    //   const result = await subCon.querySubreddit(10, 5, null, -250);
 
     //   expect(result.status).to.equal('ok');
-    //   expect(result.message).to.equal('required number of submissions processed');
+    //   expect(result.message).to.equal('only 45 submissions processed');
     //   expect(result.data).to.not.equal(undefined);
     //   fakeRequest.restore();
     // });
 
     it('should resolve even with a negative result limit', async () => {
-      const fakeRequest = sinon.stub(request, 'get').yields(null, { statusCode: 200 }, processedDataString);
+      const fakeRequest = sinon.stub(request, 'get').yields(null, { statusCode: 200 }, rawDataString);
 
-      const result = await subCon.querySubreddit(-10, 5, 250);
+      const result = await subCon.querySubreddit(-10, 5, null, 250);
 
       expect(result.status).to.equal('ok');
-      expect(result.message).to.equal('required number of submissions processed');
+      expect(result.message).to.equal('all 45 submissions processed');
       expect(result.data).to.not.equal(undefined);
       fakeRequest.restore();
     });
 
     it('should resolve even with a negative page limit', async () => {
-      const fakeRequest = sinon.stub(request, 'get').yields(null, { statusCode: 200 }, processedDataString);
+      const fakeRequest = sinon.stub(request, 'get').yields(null, { statusCode: 200 }, rawDataString);
 
-      const result = await subCon.querySubreddit(10, -5, 250);
+      const result = await subCon.querySubreddit(10, -5, null, 250);
 
       expect(result.status).to.equal('ok');
-      expect(result.message).to.equal('required number of submissions processed');
+      expect(result.message).to.equal('all 9 submissions processed');
       expect(result.data).to.not.equal(undefined);
       fakeRequest.restore();
     });
 
     it('should resolve even with a negative delay', async () => {
-      const fakeRequest = sinon.stub(request, 'get').yields(null, { statusCode: 200 }, processedDataString);
+      const fakeRequest = sinon.stub(request, 'get').yields(null, { statusCode: 200 }, rawDataString);
 
-      const result = await subCon.querySubreddit(10, 5, -250);
+      const result = await subCon.querySubreddit(10, 5, null, -250);
 
       expect(result.status).to.equal('ok');
-      expect(result.message).to.equal('required number of submissions processed');
+      expect(result.message).to.equal('all 45 submissions processed');
       expect(result.data).to.not.equal(undefined);
       fakeRequest.restore();
     });

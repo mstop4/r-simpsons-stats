@@ -80,12 +80,19 @@ const processSubmissions = (rawData, processedData) => {
   return processedData;
 };
 
-const querySubreddit = (limit = 10, pages = 1, delay = defaultDelay) => {
+const querySubreddit = (limit = 10, pages = 1, before, delay = defaultDelay) => {
   const baseUrl = 'https://api.pushshift.io/reddit/submission/search';
+  let startUtime;
 
-  const startTime = new Date;
-  startTime.setDate(startTime.getDate() - 0);
-  const startUtime = Math.floor(startTime.getTime() / 1000);
+  if (!before) { 
+    const startTime = new Date;
+    startTime.setDate(startTime.getDate() - 0);
+    startUtime = Math.floor(startTime.getTime() / 1000);
+  } 
+  
+  else {
+    startUtime = before;
+  }
 
   const query = {
     subreddit: 'TheSimpsons',
@@ -130,12 +137,12 @@ const querySubreddit = (limit = 10, pages = 1, delay = defaultDelay) => {
         if (subs.length === 0) {
           resolve({
             status: 'ok',
-            message: 'more submissions requested than available',
-            data: {...processedData}
+            message: `only ${processedData.submissions.length} submissions processed`,
+            data: processedData
           });
         }
         processedData = {...processSubmissions(subs, processedData)};
-
+        
         currentPage++;
         
         if (currentPage < pages) {
@@ -146,8 +153,8 @@ const querySubreddit = (limit = 10, pages = 1, delay = defaultDelay) => {
         else {
           resolve({
             status: 'ok',
-            message: 'required number of submissions processed',
-            data: {...processedData}
+            message: `all ${processedData.submissions.length} submissions processed`,
+            data: processedData
           });
         }
       }
@@ -195,9 +202,9 @@ const updateDatabase = (data) => {
   });
 };
 
-const getSubmissions = (limit = 10, pages = 1) => {
+const getSubmissions = (limit = 10, pages = 1, before) => {
   return new Promise((resolve, reject) => {
-    querySubreddit(limit, pages, defaultDelay)
+    querySubreddit(limit, pages, before, defaultDelay)
       .then(results => {
         updateDatabase(results.data.submissions)
           .then(() => {

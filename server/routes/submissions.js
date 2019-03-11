@@ -19,10 +19,10 @@ router.get('/', (req, res) => {
     });
 });
 
-router.update('/', (req, res) => {
+router.put('/', (req, res) => {
   checkRateLimit()
     .then(() => {
-      getSubmissions(parseInt(req.query.limit), parseInt(req.query.pages))
+      getSubmissions(parseInt(req.query.limit), parseInt(req.query.pages), parseInt(req.query.before))
         .then(results => {
           res.json(results);
         }, error => {
