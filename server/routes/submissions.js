@@ -19,10 +19,31 @@ router.get('/', (req, res) => {
     });
 });
 
+router.put('/updateOldest', (req, res) => {
+  checkRateLimit()
+    .then((meta) => {
+      console.log(`Setting request delay to ${meta.message} ms`);
+      console.log('Getting oldest submission...');
+      getOldestSubFromDB()
+        .then((oldest) => {
+          console.log(`Oldest submission is from ${oldest.date}`);
+          console.log(`Getting submissions before ${oldest.date}...`);
+          getSubmissions(parseInt(req.query.limit), parseInt(req.query.pages), oldest.date)
+            .then(results => {
+              res.json(results);
+            }, error => {
+              res.send(error);
+            });
+        });
+    });
+});
+
 router.put('/', (req, res) => {
   checkRateLimit()
-    .then(() => {
-      getSubmissions(parseInt(req.query.limit), parseInt(req.query.pages), parseInt(req.query.before))
+    .then((meta) => {
+      console.log(`Setting request delay to ${meta.message} ms`);
+      console.log('Getting submissions...');
+      getSubmissions(parseInt(req.query.limit), parseInt(req.query.pages), parseInt(req.query.before), parseInt(req.query.after))
         .then(results => {
           res.json(results);
         }, error => {

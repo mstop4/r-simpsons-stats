@@ -1,25 +1,26 @@
 const request = require('request');
 const Submission = require('../schemas/Submission');
-const delayBuffer = 10;
+const delayBuffer = 0;
 let defaultDelay = 250;
 
 const checkRateLimit = () => {
+  console.log('Checking rate limit...');
   return new Promise((resolve, reject) => {
-    request.get('https://api/pushshift.io/meta', (error, response, body) => {
+    request.get('https://api.pushshift.io/meta', (error, response, body) => {
       if (error) {
         reject({
           status: 'error',
-          message: 'Cannot connect to external API' 
+          message: 'Cannot connect to external API'
         });
       }
-  
+
       else if (response.statusCode === 404) {
         reject({
           status: 'error',
           message: 'Cannot find external API resource'
         });
       }
-  
+
       else {
         const metadata = JSON.parse(body);
         defaultDelay = 60000 / metadata.server_ratelimit_per_minute + delayBuffer;
@@ -56,7 +57,7 @@ const processSubmissions = (rawData, processedData) => {
         score: sub.score,
         link: `https://reddit.com${sub.permalink}`
       };
-  
+
       processedData.submissions.push(subDetails);
     }
 
@@ -80,16 +81,16 @@ const processSubmissions = (rawData, processedData) => {
   return processedData;
 };
 
-const querySubreddit = (limit = 10, pages = 1, before, delay = defaultDelay) => {
+const querySubreddit = (limit = 10, pages = 1, before, after = 0, delay = defaultDelay) => {
   const baseUrl = 'https://api.pushshift.io/reddit/submission/search';
   let startUtime;
 
-  if (!before) { 
+  if (!before) {
     const startTime = new Date;
     startTime.setDate(startTime.getDate() - 0);
     startUtime = Math.floor(startTime.getTime() / 1000);
-  } 
-  
+  }
+
   else {
     startUtime = before;
   }
@@ -97,7 +98,8 @@ const querySubreddit = (limit = 10, pages = 1, before, delay = defaultDelay) => 
   const query = {
     subreddit: 'TheSimpsons',
     limit: parseInt(limit) || 10,
-    before: startUtime
+    before: startUtime,
+    after: after
   };
 
   let processedData = {
@@ -112,7 +114,9 @@ const querySubreddit = (limit = 10, pages = 1, before, delay = defaultDelay) => 
   let currentPage = 0;
 
   const makeRequest = (resolve, reject) => {
-    console.log(`On page ${currentPage+1} of ${pages}`);
+    process.stdout.clearLine();
+    process.stdout.cursorTo(0);
+    process.stdout.write(`On page ${currentPage + 1} of ${pages}`);
     request.get({
       url: baseUrl,
       qs: query
@@ -121,7 +125,7 @@ const querySubreddit = (limit = 10, pages = 1, before, delay = defaultDelay) => 
       if (error) {
         reject({
           status: 'error',
-          message: 'Cannot connect to external API' 
+          message: 'Cannot connect to external API'
         });
       }
 
@@ -141,12 +145,12 @@ const querySubreddit = (limit = 10, pages = 1, before, delay = defaultDelay) => 
             data: processedData
           });
         }
-        processedData = {...processSubmissions(subs, processedData)};
-        
+        processedData = { ...processSubmissions(subs, processedData) };
+
         currentPage++;
-        
+
         if (currentPage < pages) {
-          query.before = subs[subs.length-1].created_utc + 1;
+          query.before = subs[subs.length - 1].created_utc + 1;
           setTimeout(() => makeRequest(resolve, reject), delay);
         }
 
@@ -161,11 +165,11 @@ const querySubreddit = (limit = 10, pages = 1, before, delay = defaultDelay) => 
     });
   };
 
-  return new Promise((resolve, reject) => makeRequest(resolve, reject)); 
+  return new Promise((resolve, reject) => makeRequest(resolve, reject));
 };
 
 const updateDatabase = (data) => {
-  return new Promise ((resolve, reject) => {
+  return new Promise((resolve, reject) => {
     if (!data || !(data instanceof Array)) {
       reject({
         status: 'error',
@@ -176,35 +180,65 @@ const updateDatabase = (data) => {
     if (process.env.ENV !== 'test') {
       console.log('Updating database...');
     }
-    
+
     let bulk = Submission.collection.initializeOrderedBulkOp();
+    let counter = 0;
+    let batchNumber = 0;
+
+    const batchFactory = (n) => {
+      const myNumber = n;
+    
+      return (error) => {
+        if (error) {
+          reject({
+            status: 'error',
+            message: 'Could not update database: write failed.'
+          });
+        }
+    
+        console.log(`Batch ${myNumber} complete...`);
+        bulk = Submission.collection.initializeOrderedBulkOp();
+      };
+    };
 
     data.forEach(sub => {
+      process.stdout.clearLine();
+      process.stdout.cursorTo(0);
+      process.stdout.write(`Preparing bulk: ${counter+1} of ${data.length}`);
       bulk.find({ id: sub.id }).upsert().updateOne(sub);
+      counter++;
+
+      if (counter % 1000 == 0) {
+        console.log(`\nExecuting batch ${batchNumber}...`);
+        bulk.execute(batchFactory(batchNumber));
+
+        batchNumber++;
+      }
     });
-  
-    bulk.execute((error, result) => {
+
+    bulk.execute((error) => {
+      console.log('\nExecuting final batch...');
       if (error) {
         reject({
           status: 'error',
           message: 'Could not update database: write failed.'
         });
       }
-  
+
       else {
+        console.log('Done!');
         resolve({
           status: 'ok',
           message: 'Finished updating database!',
-          result: result
         });
       }
     });
   });
 };
 
-const getSubmissions = (limit = 10, pages = 1, before) => {
+const getSubmissions = (limit = 10, pages = 1, before, after = 0) => {
   return new Promise((resolve, reject) => {
-    querySubreddit(limit, pages, before, defaultDelay)
+    querySubreddit(limit, pages, before, after, defaultDelay)
       .then(results => {
         updateDatabase(results.data.submissions)
           .then(() => {
@@ -220,7 +254,7 @@ const queryDatabase = (query, limit, seasonStats) => {
   const numSeasons = 30;
 
   return new Promise((resolve, reject) => {
-    Submission.find(query, null, {limit: limit}, (err, subs) => {
+    Submission.find(query, null, { limit: limit }, (err, subs) => {
       if (err) {
         reject({
           status: 'error',
@@ -236,7 +270,7 @@ const queryDatabase = (query, limit, seasonStats) => {
 
         subs.forEach(sub => {
           if (sub.season < numSeasons) {
-            stats[sub.season-1]++;
+            stats[sub.season - 1]++;
           }
         });
 
