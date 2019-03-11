@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 
-const { queryDatabase, getSubmissions, checkRateLimit, getOldestSubFromDB } = require('../controllers/submissionsController');
+const { queryDatabase, getSubmissions, checkRateLimit, getOldestSubFromDB, getNewestSubFromDB } = require('../controllers/submissionsController');
 
 router.get('/', (req, res) => {
   const query = {};
@@ -19,7 +19,7 @@ router.get('/', (req, res) => {
     });
 });
 
-router.put('/updateOldest', (req, res) => {
+router.put('/updateoldest', (req, res) => {
   checkRateLimit()
     .then((meta) => {
       console.log(`Setting request delay to ${meta.message} ms`);
@@ -28,6 +28,24 @@ router.put('/updateOldest', (req, res) => {
         .then((oldest) => {
           console.log(`Getting submissions before ${oldest.data.date}...`);
           getSubmissions(parseInt(req.query.limit), parseInt(req.query.pages), oldest.data.date)
+            .then(results => {
+              res.json(results);
+            }, error => {
+              res.send(error);
+            });
+        });
+    });
+});
+
+router.put('/updatenewest', (req, res) => {
+  checkRateLimit()
+    .then((meta) => {
+      console.log(`Setting request delay to ${meta.message} ms`);
+      console.log('Getting newest submission...');
+      getNewestSubFromDB()
+        .then((newest) => {
+          console.log(`Getting submissions after ${newest.data.date}...`);
+          getSubmissions(parseInt(req.query.limit), parseInt(req.query.pages), null, newest.data.date)
             .then(results => {
               res.json(results);
             }, error => {

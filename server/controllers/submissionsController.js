@@ -212,9 +212,10 @@ const querySubreddit = (limit = 10, pages = 1, before, after, delay = defaultDel
             message: `only ${processedData.submissions.length} submissions processed`,
             data: processedData
           });
+          return;
         }
-        processedData = { ...processSubmissions(subs, processedData) };
 
+        processedData = { ...processSubmissions(subs, processedData) };
         currentPage++;
 
         if (currentPage < pages) {
