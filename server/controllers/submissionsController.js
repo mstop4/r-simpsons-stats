@@ -43,6 +43,19 @@ const getOldestSubFromDB = () => {
         });
       }
 
+      if (!sub) {
+        const startTime = new Date;
+        const startUtime = Math.floor(startTime.getTime() / 1000);
+
+        resolve({
+          status: 'ok',
+          message: 'no submissions in database, returning current time',
+          data: {
+            date: startUtime
+          }
+        });
+      }
+
       resolve({
         status: 'ok',
         message: 'ok',
@@ -59,6 +72,16 @@ const getNewestSubFromDB = () => {
         reject({
           status: 'error',
           message: 'Could not query database.'
+        });
+      }
+
+      if (!sub) {
+        resolve({
+          status: 'ok',
+          message: 'no submissions in database, returning 0',
+          data: {
+            date: 0
+          }
         });
       }
 
