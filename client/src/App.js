@@ -47,9 +47,14 @@ class App extends Component {
     fetch('/submissions?season=0&seasonstats=true')
       .then(res => res.json())
       .then(result => {
+        
         if (result.status === 'ok') {
+          const newSeasonCounts = result.data.map(season => {
+            return season.reduce((sum, num) => sum + num);
+          });
+
           this.setState({
-            seasonCounts: result.data,
+            seasonCounts: newSeasonCounts,
             showChart: true
           });
         }

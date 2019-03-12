@@ -3,6 +3,8 @@ const Submission = require('../schemas/Submission');
 const delayBuffer = 0;
 let defaultDelay = 250;
 
+const numSeasons = 30;
+
 const checkRateLimit = () => {
   console.log('Checking rate limit...');
   return new Promise((resolve, reject) => {
@@ -109,18 +111,23 @@ const processSubmissions = (rawData, processedData) => {
 
     if (isEpisode.test(sub.link_flair_text)) {
       const processedFlair = isEpisode.exec(sub.link_flair_text);
-      processedData.episodeCount++;
+      const seasonNum = parseInt(processedFlair[1]);
+      const episodeNum = parseInt(processedFlair[2]);
 
-      const subDetails = {
-        id: sub.id,
-        season: parseInt(processedFlair[1]),
-        episode: parseInt(processedFlair[2]),
-        score: sub.score,
-        date: sub.created_utc,
-        link: `https://reddit.com${sub.permalink}`
-      };
+      if (seasonNum > 0 && seasonNum <= numSeasons && episodeNum > 0) {
+        processedData.episodeCount++;
 
-      processedData.submissions.push(subDetails);
+        const subDetails = {
+          id: sub.id,
+          season: seasonNum,
+          episode: episodeNum,
+          score: sub.score,
+          date: sub.created_utc,
+          link: `https://reddit.com${sub.permalink}`
+        };
+  
+        processedData.submissions.push(subDetails);
+      }
     }
 
     else if (isNews.test(sub.link_flair_text)) {
@@ -274,6 +281,7 @@ const updateDatabase = (data) => {
       process.stdout.clearLine();
       process.stdout.cursorTo(0);
       process.stdout.write(`Preparing bulk: ${counter+1} of ${data.length}`);
+
       bulk.find({ id: sub.id }).upsert().updateOne(sub);
       counter++;
 
@@ -330,7 +338,6 @@ const getSubmissions = (limit = 10, pages = 1, before, after = 0) => {
 };
 
 const queryDatabase = (query, limit, seasonStats) => {
-  const numSeasons = 30;
 
   return new Promise((resolve, reject) => {
     Submission.find(query, null, { limit: limit }, (err, subs) => {
@@ -344,12 +351,12 @@ const queryDatabase = (query, limit, seasonStats) => {
       if (seasonStats) {
         const stats = [];
         for (let i = 0; i < numSeasons; i++) {
-          stats.push(0);
+          stats.push([]);
         }
 
         subs.forEach(sub => {
-          if (sub.season <= numSeasons) {
-            stats[sub.season - 1]++;
+          if (sub.season > 0 && sub.season <= numSeasons && sub.episode > 0) {
+            stats[sub.season - 1][sub.episode - 1] = stats[sub.season - 1][sub.episode - 1] + 1 || 1;
           }
         });
 
