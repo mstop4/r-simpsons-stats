@@ -62,10 +62,14 @@ class App extends Component {
   }
 
   render() {
+    const chartClass = !this.state.showChart ? 'chart--hidden' : '';
+
     return (
       <div>
         {!this.state.showChart && <p>Fetching data...</p>}
-        <canvas id="myChart" width="400" height="400"></canvas>
+        <div id="chartWrapper" className={chartClass}>
+          <canvas id="myChart" width="400" height="400"></canvas>
+        </div>
       </div>
     );
   }
