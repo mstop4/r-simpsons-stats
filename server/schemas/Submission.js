@@ -1,7 +1,7 @@
 const mongoose = require('mongoose');
 
 const submissionSchema = new mongoose.Schema({
-  _id: String,
+  id: String,
   season: Number,
   episode: Number,
   score: Number,
