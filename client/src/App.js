@@ -7,7 +7,9 @@ class App extends Component {
     super(props);
     this.state = {
       seasonCounts: [],
-      showChart: false
+      showChart: false,
+      seasonDetails: true,
+      seasonNum: 5
     };
 
     this.myChart = null;
@@ -44,14 +46,24 @@ class App extends Component {
       }
     });
 
+
     fetch('/submissions?season=0&seasonstats=true')
       .then(res => res.json())
       .then(result => {
-        
         if (result.status === 'ok') {
-          const newSeasonCounts = result.data.map(season => {
-            return season.reduce((sum, num) => sum + num);
-          });
+          let newSeasonCounts;
+
+          if (this.state.seasonDetails) {
+            newSeasonCounts = result.data[this.state.seasonNum - 1];
+          }
+
+          else {
+            newSeasonCounts = result.data.map(season => {
+              return season.reduce((sum, num) => sum + num);
+            });
+          }
+
+          console.log(newSeasonCounts);
 
           this.setState({
             seasonCounts: newSeasonCounts,
@@ -63,6 +75,13 @@ class App extends Component {
 
   componentDidUpdate() {
     this.myChart.data.datasets[0].data = this.state.seasonCounts;
+
+    const newSeasonLabels = [];
+    for (let i = 0; i < 30; i++) {
+      newSeasonLabels[i] = (i+1).toString();
+    }
+    this.myChart.data.labels = newSeasonLabels;
+
     this.myChart.update();
   }
 

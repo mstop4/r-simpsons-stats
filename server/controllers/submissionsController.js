@@ -4,6 +4,38 @@ const delayBuffer = 0;
 let defaultDelay = 250;
 
 const numSeasons = 30;
+const numEpisodes = [
+  13,
+  22,
+  24,
+  22,
+  22,
+  25,
+  25,
+  25,
+  25,
+  23,
+  22,
+  21,
+  22,
+  22,
+  22,
+  21,
+  22,
+  22,
+  20,
+  21,
+  23,
+  22,
+  22,
+  22,
+  22,
+  22,
+  22,
+  22,
+  21,
+  19
+];
 
 const checkRateLimit = () => {
   console.log('Checking rate limit...');
@@ -338,7 +370,6 @@ const getSubmissions = (limit = 10, pages = 1, before, after = 0) => {
 };
 
 const queryDatabase = (query, limit, seasonStats) => {
-
   return new Promise((resolve, reject) => {
     Submission.find(query, null, { limit: limit }, (err, subs) => {
       if (err) {

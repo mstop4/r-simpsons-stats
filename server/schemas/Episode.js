@@ -1,7 +1,10 @@
 const mongoose = require('mongoose');
 
 const episodeSchema = new mongoose.Schema({
-  season: Number,
+  season: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Season'
+  },
   number: Number,
   title: String,
   aired: Number,

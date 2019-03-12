@@ -4,9 +4,10 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "client:dev": "cd client && yarn start",
-    "server:dev": "cd server && yarn start",
-    "test:server": "cd server && yarn test"
+    "start:client": "cd client && yarn start",
+    "start:server": "cd server && yarn start",
+    "test:server": "cd server && yarn test",
+    "seed:server": "cd server && yarn seed"
   },
   "repository": {
     "type": "git",
