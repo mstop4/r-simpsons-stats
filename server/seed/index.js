@@ -1,5 +1,5 @@
 const mongoose = require('mongoose');
-const Episode = require('../schemas/Episode');
+//const Episode = require('../schemas/Episode');
 const Season = require('../schemas/Season');
 
 if (process.env.ENV === 'test') {

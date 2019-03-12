@@ -1,41 +1,11 @@
 const request = require('request');
 const Submission = require('../schemas/Submission');
+const Season = require('../schemas/Season');
 const delayBuffer = 0;
 let defaultDelay = 250;
 
-const numSeasons = 30;
-const numEpisodes = [
-  13,
-  22,
-  24,
-  22,
-  22,
-  25,
-  25,
-  25,
-  25,
-  23,
-  22,
-  21,
-  22,
-  22,
-  22,
-  21,
-  22,
-  22,
-  20,
-  21,
-  23,
-  22,
-  22,
-  22,
-  22,
-  22,
-  22,
-  22,
-  21,
-  19
-];
+let seasonData;
+const setSeasonData = (data) => seasonData = data;
 
 const checkRateLimit = () => {
   console.log('Checking rate limit...');
@@ -67,9 +37,32 @@ const checkRateLimit = () => {
   });
 };
 
+const getMetaDataFromDB = () => {
+  return new Promise((resolve, reject) => {
+    Season.find({}, null, { sort: { number: 1 } }, (err, data) => {
+      if (err) {
+        reject({
+          status: 'error',
+          message: 'Could not query database.'
+        });
+        return;
+      }
+
+      setSeasonData(data);
+
+      console.log(`Number of seasons: ${data.length}`);
+      resolve({
+        status: 'ok',
+        message: 'ok',
+        data: data
+      });
+    });
+  });
+};
+
 const getOldestSubFromDB = () => {
   return new Promise((resolve, reject) => {
-    Submission.findOne({}, null, { sort: {date: 1} }, (err, sub) => {
+    Submission.findOne({}, null, { sort: { date: 1 } }, (err, sub) => {
       if (err) {
         reject({
           status: 'error',
@@ -101,7 +94,7 @@ const getOldestSubFromDB = () => {
 
 const getNewestSubFromDB = () => {
   return new Promise((resolve, reject) => {
-    Submission.findOne({}, null, { sort: {date: -1} }, (err, sub) => {
+    Submission.findOne({}, null, { sort: { date: -1 } }, (err, sub) => {
       if (err) {
         reject({
           status: 'error',
@@ -146,7 +139,8 @@ const processSubmissions = (rawData, processedData) => {
       const seasonNum = parseInt(processedFlair[1]);
       const episodeNum = parseInt(processedFlair[2]);
 
-      if (seasonNum > 0 && seasonNum <= numSeasons && episodeNum > 0) {
+      if (seasonNum > 0 && seasonNum <= seasonData.length &&
+        episodeNum > 0 && episodeNum <= seasonData[seasonNum - 1].numEpisodes) {
         processedData.episodeCount++;
 
         const subDetails = {
@@ -157,7 +151,7 @@ const processSubmissions = (rawData, processedData) => {
           date: sub.created_utc,
           link: `https://reddit.com${sub.permalink}`
         };
-  
+
         processedData.submissions.push(subDetails);
       }
     }
@@ -196,7 +190,7 @@ const querySubreddit = (limit = 10, pages = 1, before, after, delay = defaultDel
     startUtime = before;
   }
 
-  endUtime = after !== 0 && !after ? 0 : after; 
+  endUtime = after !== 0 && !after ? 0 : after;
 
   const query = {
     subreddit: 'TheSimpsons',
@@ -295,7 +289,7 @@ const updateDatabase = (data) => {
 
     const batchFactory = (n) => {
       const myNumber = n;
-    
+
       return (error) => {
         if (error) {
           reject({
@@ -303,7 +297,7 @@ const updateDatabase = (data) => {
             message: 'Could not update database: write failed.'
           });
         }
-    
+
         console.log(`Batch ${myNumber} complete...`);
         bulk = Submission.collection.initializeOrderedBulkOp();
       };
@@ -312,7 +306,7 @@ const updateDatabase = (data) => {
     data.forEach(sub => {
       process.stdout.clearLine();
       process.stdout.cursorTo(0);
-      process.stdout.write(`Preparing bulk: ${counter+1} of ${data.length}`);
+      process.stdout.write(`Preparing bulk: ${counter + 1} of ${data.length}`);
 
       bulk.find({ id: sub.id }).upsert().updateOne(sub);
       counter++;
@@ -381,12 +375,13 @@ const queryDatabase = (query, limit, seasonStats) => {
 
       if (seasonStats) {
         const stats = [];
-        for (let i = 0; i < numSeasons; i++) {
+        for (let i = 0; i < seasonData.length; i++) {
           stats.push([]);
         }
 
         subs.forEach(sub => {
-          if (sub.season > 0 && sub.season <= numSeasons && sub.episode > 0) {
+          if (sub.season > 0 && sub.season <= seasonData.length &&
+            sub.episode > 0 && sub.episode <= seasonData[sub.episode - 1].numEpisodes) {
             stats[sub.season - 1][sub.episode - 1] = stats[sub.season - 1][sub.episode - 1] + 1 || 1;
           }
         });
@@ -408,7 +403,9 @@ const queryDatabase = (query, limit, seasonStats) => {
 };
 
 module.exports = {
+  setSeasonData,
   checkRateLimit,
+  getMetaDataFromDB,
   getOldestSubFromDB,
   getNewestSubFromDB,
   processSubmissions,

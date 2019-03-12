@@ -63,8 +63,6 @@ class App extends Component {
             });
           }
 
-          console.log(newSeasonCounts);
-
           this.setState({
             seasonCounts: newSeasonCounts,
             showChart: true

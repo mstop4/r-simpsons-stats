@@ -1,3 +1,5 @@
+process.env.ENV = 'test';
+
 const request = require('request');
 const expect = require('chai').expect;
 const sinon = require('sinon');
@@ -6,12 +8,10 @@ const subCon = require('../controllers/submissionsController');
 
 const processedTestData = require('./data/processedTestData');
 const rawTestData = require('./data/rawTestData');
-
-process.env.ENV = 'test';
+const seasonTestData = require('./data/seasonData');
 
 describe('Submissions Controller', () => {
   describe('processSubmissions', () => {
-
     const templateProcessedData = {
       episodeCount: 0,
       newsCount: 0,
@@ -24,6 +24,14 @@ describe('Submissions Controller', () => {
     const invalidProcessedData = {
       secretIngredient: 'love'
     };
+
+    before(() => {
+      subCon.setSeasonData(seasonTestData);
+    });
+
+    after(() => {
+      subCon.setSeasonData(null);
+    });
 
     it('should process and tally all submissions', () => {
       const processedData = {
@@ -175,6 +183,14 @@ describe('Submissions Controller', () => {
   });
 
   describe('queryDatabase', () => {
+    before(() => {
+      subCon.setSeasonData(seasonTestData);
+    });
+
+    after(() => {
+      subCon.setSeasonData(null);
+    });
+
     it('should resolve with a status of \'ok\'', async () => {
       const fakeFind = sinon.stub(Submission, 'find').yields(null, [1, 2, 3] );
       const result = await subCon.queryDatabase({}, 1, false);
@@ -221,6 +237,14 @@ describe('Submissions Controller', () => {
 
     // TODO: Test "before" and "after" arguments with something other than null and undefined
     //       Test cases where the server requests more submissions than the API can provide
+
+    before(() => {
+      subCon.setSeasonData(seasonTestData);
+    });
+
+    after(() => {
+      subCon.setSeasonData(null);
+    });
 
     it('should resolve with supplied arguments', async () => {
       const fakeRequest = sinon.stub(request, 'get').yields(null, { statusCode: 200 }, rawDataString);

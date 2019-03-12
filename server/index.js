@@ -6,11 +6,13 @@ const port = 5000;
 
 const index = require('./routes/index');
 const submissions = require('./routes/submissions');
+const seasons = require('./routes/seasons');
 
 app.use(morgan('tiny'));
 
 app.use('', index);
 app.use('/submissions', submissions);
+app.use('/seasons', seasons);
 
 if (process.env.ENV === 'test') {
   mongoose.connect('mongodb://localhost/rSimpsonsStats_test');
