@@ -1,22 +1,43 @@
 import React, { Component } from 'react';
 import Chart from 'chart.js';
-import './App.css';
+import SeasonDetails from './SeasonDetails';
+import '../App.css';
 
 class App extends Component {
   constructor(props) {
     super(props);
     this.state = {
       seasonData: [],
+      completeData: [],
       chartData: [],
       showChart: false,
-      seasonDetails: false,
+      seasonDetails: true,
       seasonNum: 1
     };
 
     this.myChart = null;
   }
 
-  componentDidMount() {
+  toggleSeasonDetails = (event) => {
+    let newChartData;
+
+    if (event.target.checked) {
+      newChartData = this.state.completeData[this.state.seasonNum-1];
+    }
+
+    else {
+      newChartData = this.state.completeData.map(season => {
+        return season.reduce((sum, num) => sum + num);
+      });
+    }
+
+    this.setState({
+      chartData: newChartData,
+      seasonDetails: event.target.checked
+    });
+  }
+
+  componentDidMount = () => {
     const seasonLabels = [];
     for (let i = 0; i < 30; i++) {
       seasonLabels[i] = (i+1).toString();
@@ -71,6 +92,7 @@ class App extends Component {
 
                 this.setState({
                   seasonData: seasonData.data,
+                  completeData: chartData.data,
                   chartData: newChartData,
                   showChart: true
                 });
@@ -80,7 +102,7 @@ class App extends Component {
       });
   }
 
-  componentDidUpdate() {
+  componentDidUpdate = () => {
     this.myChart.data.datasets[0].data = this.state.chartData;
     const numLabels = this.state.seasonDetails ? this.state.seasonData[this.state.seasonNum-1].numEpisodes : this.state.seasonData.length;
 
@@ -93,7 +115,7 @@ class App extends Component {
     this.myChart.update();
   }
 
-  render() {
+  render = () => {
     const chartClass = !this.state.showChart ? 'chart--hidden' : '';
 
     return (
@@ -102,6 +124,7 @@ class App extends Component {
         <div id="chartWrapper" className={chartClass}>
           <canvas id="myChart" width="400" height="400"></canvas>
         </div>
+        <SeasonDetails checked={this.state.seasonDetails} handleChange={this.toggleSeasonDetails}/>
       </div>
     );
   }
