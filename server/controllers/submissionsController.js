@@ -1,6 +1,7 @@
 const request = require('request');
 const Submission = require('../schemas/Submission');
 const Season = require('../schemas/Season');
+const { logNotInTest, inlineWriteNotInTest } = require('../utils');
 const delayBuffer = 0;
 let defaultDelay = 250;
 
@@ -98,9 +99,7 @@ const _querySubreddit = (limit = 10, pages = 1, before, after, delay = defaultDe
   let currentPage = 0;
 
   const makeRequest = (resolve, reject) => {
-    process.stdout.clearLine();
-    process.stdout.cursorTo(0);
-    process.stdout.write(`On page ${currentPage + 1} of ${pages}`);
+    inlineWriteNotInTest(`On page ${currentPage + 1} of ${pages}`);
 
     request.get({
       url: baseUrl,
@@ -164,9 +163,7 @@ const _updateDatabase = (data) => {
       });
     }
 
-    if (process.env.ENV !== 'test') {
-      console.log('\nUpdating database...');
-    }
+    logNotInTest('\nUpdating database...');
 
     let bulk = Submission.collection.initializeOrderedBulkOp();
     let counter = 0;
@@ -183,21 +180,20 @@ const _updateDatabase = (data) => {
           });
         }
 
-        console.log(`Batch ${myNumber} complete...`);
+        logNotInTest(`Batch ${myNumber} complete...`);
+
         bulk = Submission.collection.initializeOrderedBulkOp();
       };
     };
 
     data.forEach(sub => {
-      process.stdout.clearLine();
-      process.stdout.cursorTo(0);
-      process.stdout.write(`Preparing bulk: ${counter + 1} of ${data.length}`);
+      inlineWriteNotInTest(`Preparing bulk: ${counter + 1} of ${data.length}`);
 
       bulk.find({ id: sub.id }).upsert().updateOne(sub);
       counter++;
 
       if (counter % 1000 == 0) {
-        console.log(`\nExecuting batch ${batchNumber}...`);
+        logNotInTest(`\nExecuting batch ${batchNumber}...`);
         bulk.execute(batchFactory(batchNumber));
 
         batchNumber++;
@@ -206,7 +202,7 @@ const _updateDatabase = (data) => {
 
     if (counter > 0) {
       bulk.execute((error) => {
-        console.log('\nExecuting final batch...');
+        logNotInTest('\nExecuting final batch...');
         if (error) {
           reject({
             status: 'error',
@@ -215,7 +211,7 @@ const _updateDatabase = (data) => {
         }
 
         else {
-          console.log('Done!');
+          logNotInTest('Done!');
           resolve({
             status: 'ok',
             message: 'Finished updating database!',
@@ -225,7 +221,7 @@ const _updateDatabase = (data) => {
     }
 
     else {
-      console.log('Done!');
+      logNotInTest('Done!');
       resolve({
         status: 'ok',
         message: 'Finished updating database!',
@@ -235,7 +231,7 @@ const _updateDatabase = (data) => {
 };
 
 const checkRateLimit = () => {
-  console.log('Checking rate limit...');
+  logNotInTest('Checking rate limit...');
   return new Promise((resolve, reject) => {
     request.get('https://api.pushshift.io/meta', (error, response, body) => {
       if (error) {
@@ -277,7 +273,7 @@ const getMetaDataFromDB = () => {
 
       seasonData = data;
 
-      console.log(`Number of seasons: ${data.length}`);
+      logNotInTest(`Number of seasons: ${data.length}`);
       resolve({
         status: 'ok',
         message: 'ok',
