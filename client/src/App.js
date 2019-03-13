@@ -6,10 +6,11 @@ class App extends Component {
   constructor(props) {
     super(props);
     this.state = {
-      seasonCounts: [],
+      seasonData: [],
+      chartData: [],
       showChart: false,
-      seasonDetails: true,
-      seasonNum: 5
+      seasonDetails: false,
+      seasonNum: 1
     };
 
     this.myChart = null;
@@ -46,40 +47,49 @@ class App extends Component {
       }
     });
 
-
-    fetch('/submissions?season=0&seasonstats=true')
+    fetch('/seasons')
       .then(res => res.json())
-      .then(result => {
-        if (result.status === 'ok') {
-          let newSeasonCounts;
+      .then(seasonData => {
 
-          if (this.state.seasonDetails) {
-            newSeasonCounts = result.data[this.state.seasonNum - 1];
-          }
+        if (seasonData.status === 'ok') {
+          fetch('/submissions?season=0&seasonstats=true')
+            .then(res => res.json())
+            .then(chartData => {
+              
+              if (chartData.status === 'ok') {
+                let newChartData;
 
-          else {
-            newSeasonCounts = result.data.map(season => {
-              return season.reduce((sum, num) => sum + num);
+                if (this.state.seasonDetails) {
+                  newChartData = chartData.data[this.state.seasonNum-1];
+                }
+
+                else {
+                  newChartData = chartData.data.map(season => {
+                    return season.reduce((sum, num) => sum + num);
+                  });
+                }
+
+                this.setState({
+                  seasonData: seasonData.data,
+                  chartData: newChartData,
+                  showChart: true
+                });
+              }
             });
-          }
-
-          this.setState({
-            seasonCounts: newSeasonCounts,
-            showChart: true
-          });
         }
       });
   }
 
   componentDidUpdate() {
-    this.myChart.data.datasets[0].data = this.state.seasonCounts;
+    this.myChart.data.datasets[0].data = this.state.chartData;
+    const numLabels = this.state.seasonDetails ? this.state.seasonData[this.state.seasonNum-1].numEpisodes : this.state.seasonData.length;
 
     const newSeasonLabels = [];
-    for (let i = 0; i < 30; i++) {
+    for (let i = 0; i < numLabels; i++) {
       newSeasonLabels[i] = (i+1).toString();
     }
-    this.myChart.data.labels = newSeasonLabels;
 
+    this.myChart.data.labels = newSeasonLabels;
     this.myChart.update();
   }
 

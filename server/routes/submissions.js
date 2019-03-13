@@ -2,93 +2,120 @@ const express = require('express');
 const router = express.Router();
 
 const { queryDatabase, getSubmissions, checkRateLimit, getMetaDataFromDB, getOldestSubFromDB, getNewestSubFromDB } = require('../controllers/submissionsController');
+let routeIsReady = false;
+
+getMetaDataFromDB()
+  .then(() => {
+    routeIsReady = true;
+  }, error => {
+    console.log(`Metadata error: ${error.message}`);
+  });
 
 router.get('/', (req, res) => {
-  const query = {};
-  const seasonStats = req.query.seasonstats ? req.query.seasonstats.toLowerCase() === 'true' : false;
+  if (routeIsReady) {
+    const query = {};
+    const seasonStats = req.query.seasonstats ? req.query.seasonstats.toLowerCase() === 'true' : false;
 
-  if (req.query.season !== '0') {
-    query.season = parseInt(req.query.season);
+    if (req.query.season !== '0') {
+      query.season = parseInt(req.query.season);
+    }
+
+    queryDatabase(query, parseInt(req.query.limit), seasonStats)
+      .then(results => {
+        res.json(results);
+      }, error => {
+        res.json(error);
+      });
   }
 
-  queryDatabase(query, parseInt(req.query.limit), seasonStats)
-    .then(results => {
-      res.json(results);
-    }, error => {
-      res.json(error);
+  else {
+    res.json({
+      status: 'error',
+      message: '/submissions is not ready yet'
     });
+  }
 });
 
 router.put('/updateoldest', (req, res) => {
-  checkRateLimit()
-    .then((delay) => {
-      console.log(`Setting request delay to ${delay.message} ms`);
+  if (routeIsReady) {
+    checkRateLimit()
+      .then((delay) => {
+        console.log(`Setting request delay to ${delay.message} ms`);
+        console.log('Getting oldest submission...');
 
-      console.log('Getting metadata...');
+        getOldestSubFromDB()
+          .then((oldest) => {
+            console.log(`Getting submissions before ${oldest.data.date}...`);
 
-      getMetaDataFromDB()
-        .then(() => {
-          console.log('Getting oldest submission...');
+            getSubmissions(parseInt(req.query.limit), parseInt(req.query.pages), oldest.data.date)
+              .then(results => {
+                res.json(results);
+              }, error => {
+                res.json(error);
+              });
+          });
+      });
+  }
 
-          getOldestSubFromDB()
-            .then((oldest) => {
-              console.log(`Getting submissions before ${oldest.data.date}...`);
-
-              getSubmissions(parseInt(req.query.limit), parseInt(req.query.pages), oldest.data.date)
-                .then(results => {
-                  res.json(results);
-                }, error => {
-                  res.json(error);
-                });
-            });
-        });
+  else {
+    res.json({
+      status: 'error',
+      message: '/submissions is not ready yet'
     });
+  }
 });
 
 router.put('/updatenewest', (req, res) => {
-  checkRateLimit()
-    .then((delay) => {
-      console.log(`Setting request delay to ${delay.message} ms`);
+  if (routeIsReady) {
+    checkRateLimit()
+      .then((delay) => {
+        console.log(`Setting request delay to ${delay.message} ms`);
+        console.log('Getting newest submission...');
 
-      console.log('Getting metadata...');
+        getNewestSubFromDB()
+          .then((newest) => {
+            console.log(`Getting submissions after ${newest.data.date}...`);
 
-      getMetaDataFromDB()
-        .then(() => {
-          console.log('Getting newest submission...');
+            getSubmissions(parseInt(req.query.limit), parseInt(req.query.pages), null, newest.data.date)
+              .then(results => {
+                res.json(results);
+              }, error => {
+                res.json(error);
+              });
+          });
+      });
+  }
 
-          getNewestSubFromDB()
-            .then((newest) => {
-              console.log(`Getting submissions after ${newest.data.date}...`);
-
-              getSubmissions(parseInt(req.query.limit), parseInt(req.query.pages), null, newest.data.date)
-                .then(results => {
-                  res.json(results);
-                }, error => {
-                  res.json(error);
-                });
-            });
-        });
+  else {
+    res.json({
+      status: 'error',
+      message: '/submissions is not ready yet'
     });
+  }
 });
 
 router.put('/', (req, res) => {
-  checkRateLimit()
-    .then((delay) => {
-      console.log(`Setting request delay to ${delay.message} ms`);
-      console.log('Getting metadata...');
+  if (routeIsReady) {
+    checkRateLimit()
+      .then((delay) => {
+        console.log(`Setting request delay to ${delay.message} ms`);
+        console.log('Getting submissions...');
 
-      getMetaDataFromDB()
-        .then(() => {
-          console.log('Getting submissions...');
+        getSubmissions(parseInt(req.query.limit), parseInt(req.query.pages), parseInt(req.query.before), parseInt(req.query.after))
+          .then(results => {
+            res.json(results);
+          }, error => {
+            res.json(error);
+          });
+      });
+  }
 
-          getSubmissions(parseInt(req.query.limit), parseInt(req.query.pages), parseInt(req.query.before), parseInt(req.query.after))
-            .then(results => {
-              res.json(results);
-            }, error => {
-              res.json(error);
-            });
-        });
+  else {
+    res.json({
+      status: 'error',
+      message: '/submissions is not ready yet'
     });
+  }
 });
 
 module.exports = router;

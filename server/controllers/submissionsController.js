@@ -381,7 +381,7 @@ const queryDatabase = (query, limit, seasonStats) => {
 
         subs.forEach(sub => {
           if (sub.season > 0 && sub.season <= seasonData.length &&
-            sub.episode > 0 && sub.episode <= seasonData[sub.episode - 1].numEpisodes) {
+            sub.episode > 0 && sub.episode <= seasonData[sub.season - 1].numEpisodes) {
             stats[sub.season - 1][sub.episode - 1] = stats[sub.season - 1][sub.episode - 1] + 1 || 1;
           }
         });
