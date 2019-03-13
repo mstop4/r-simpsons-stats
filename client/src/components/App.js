@@ -1,6 +1,7 @@
 import React, { Component } from 'react';
 import Chart from 'chart.js';
 import SeasonDetails from './SeasonDetails';
+import SeasonSelector from './SeasonSelector';
 import '../App.css';
 
 class App extends Component {
@@ -11,7 +12,7 @@ class App extends Component {
       completeData: [],
       chartData: [],
       showChart: false,
-      seasonDetails: true,
+      seasonDetails: false,
       seasonNum: 1
     };
 
@@ -37,6 +38,59 @@ class App extends Component {
     });
   }
 
+  handleSeasonSelection = (event) => {
+    const num = parseInt(event.target.value);
+
+    if (this.state.seasonDetails) {
+      const newChartData = this.state.completeData[num-1];
+
+      this.setState({
+        chartData: newChartData,
+        seasonNum: num
+      });
+    }
+
+    else {
+      this.setState({
+        seasonNum: num
+      });
+    }
+  }
+
+  chartClick = (event, elems) => {
+    if (!this.state.seasonDetails) {
+      let seasonClicked = null;
+
+      ///console.log(this.myChart.scales['x-axis-0']);
+
+      if (elems && elems.length > 0) {
+        seasonClicked = elems[0]._index;
+      }
+
+      else {
+        const mousePoint = Chart.helpers.getRelativePosition(event, this.myChart.chart);
+
+        if (mousePoint.y >= this.myChart.scales['x-axis-0'].top) {
+          seasonClicked = this.myChart.scales['x-axis-0'].getValueForPixel(mousePoint.x);
+        }
+
+        else {
+          seasonClicked = null;
+        }
+      }
+      
+      if (seasonClicked !== null) {
+        const newChartData = this.state.completeData[seasonClicked];
+
+        this.setState({
+          chartData: newChartData,
+          seasonNum: seasonClicked+1,
+          seasonDetails: true
+        });
+      }
+    }
+  }
+
   componentDidMount = () => {
     const seasonLabels = [];
     for (let i = 0; i < 30; i++) {
@@ -57,6 +111,7 @@ class App extends Component {
         }]
       },
       options: {
+        onClick: this.chartClick,
         maintainAspectRatio: false,
         scales: {
           yAxes: [{
@@ -124,7 +179,15 @@ class App extends Component {
         <div id="chartWrapper" className={chartClass}>
           <canvas id="myChart" width="400" height="400"></canvas>
         </div>
-        <SeasonDetails checked={this.state.seasonDetails} handleChange={this.toggleSeasonDetails}/>
+        <SeasonDetails 
+          checked={this.state.seasonDetails}
+          handleChange={this.toggleSeasonDetails}
+        />
+        <SeasonSelector
+          maxSeason={this.state.seasonData.length}
+          curSeason={this.state.seasonNum}
+          handleChange={this.handleSeasonSelection}
+        />
       </div>
     );
   }

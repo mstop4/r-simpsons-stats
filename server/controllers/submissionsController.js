@@ -35,7 +35,8 @@ const _processSubmissions = (rawData, processedData) => {
           episode: episodeNum,
           score: sub.score,
           date: sub.created_utc,
-          link: `https://reddit.com${sub.permalink}`
+          subLink: `https://reddit.com${sub.permalink}`,
+          mediaLink: sub.url
         };
 
         processedData.submissions.push(subDetails);
@@ -361,7 +362,7 @@ const getSubmissions = (limit = 10, pages = 1, before, after = 0) => {
 
 const queryDatabase = (query, limit, seasonStats) => {
   return new Promise((resolve, reject) => {
-    Submission.find(query, null, { limit: limit }, (err, subs) => {
+    Submission.find(query, '-_id -__v', { limit: limit }, (err, subs) => {
       if (err) {
         reject({
           status: 'error',

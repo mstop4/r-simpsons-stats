@@ -6,7 +6,8 @@ const submissionSchema = new mongoose.Schema({
   episode: Number,
   score: Number,
   date: Number,
-  link: String
+  subLink: String,
+  mediaLink: String,
 });
 
 const Submission = mongoose.model('Submission', submissionSchema);

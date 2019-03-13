@@ -15,9 +15,9 @@ app.use('/submissions', submissions);
 app.use('/seasons', seasons);
 
 if (process.env.ENV === 'test') {
-  mongoose.connect('mongodb://localhost/rSimpsonsStats_test');
+  mongoose.connect('mongodb://localhost/rSimpsonsStats_test', { useNewUrlParser: true } );
 } else {
-  mongoose.connect('mongodb://localhost/rSimpsonsStats');
+  mongoose.connect('mongodb://localhost/rSimpsonsStats', { useNewUrlParser: true } );
 }
 const db = mongoose.connection;
 

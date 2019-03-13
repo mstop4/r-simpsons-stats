@@ -2,7 +2,7 @@ const Season = require('../schemas/Season');
 
 const getSeasons = () => {
   return new Promise((resolve, reject) => {
-    Season.find({}, null, { sort: { number: 1 } }, (err, results) => {
+    Season.find({}, '-_id -__v', { sort: { number: 1 } }, (err, results) => {
       if (err) {
         reject({
           status: 'error',
