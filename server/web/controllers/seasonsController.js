@@ -1,4 +1,4 @@
-const Season = require('../schemas/Season');
+const Season = require('../../common/schemas/Season');
 
 const getSeasons = () => {
   return new Promise((resolve, reject) => {

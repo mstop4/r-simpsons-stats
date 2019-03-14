@@ -5,9 +5,9 @@
   "main": "index.js",
   "scripts": {
     "start:client": "cd client && yarn start",
-    "start:server": "cd server && yarn start",
-    "test:server": "cd server && yarn test",
-    "seed:server": "cd server && yarn seed"
+    "start:web": "cd server && yarn start:web",
+    "test:server": "cd server && yarn test:web && yarn test:worker",
+    "seed": "cd server && yarn seed"
   },
   "repository": {
     "type": "git",

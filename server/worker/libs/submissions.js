@@ -1,252 +1,14 @@
 const request = require('request');
-const Submission = require('../schemas/Submission');
-const Season = require('../schemas/Season');
-const Meta = require('../schemas/Meta');
-const { logNotInTest, inlineWriteNotInTest } = require('../utils');
+const Submission = require('../../common/schemas/Submission');
+const Season = require('../../common/schemas/Season');
+const Meta = require('../../common/schemas/Meta');
+const { logNotInTest, inlineWriteNotInTest } = require('../../common/utils');
+
 const delayBuffer = 0;
 let defaultDelay = 250;
 
 let seasonData;
 let lastUpdated = 0;
-
-const _processSubmissions = (rawData, processedData) => {
-  // Check for invalid arguments
-  if (!rawData || !processedData || !processedData.submissions) {
-    return processedData;
-  }
-
-  rawData.forEach(sub => {
-    const isEpisode = /s0*(\d+)e0*(\d+)/i;
-    const isNews = /news/i;
-    const isOC = /oc/i;
-    const isShitpost = /shitpost/i;
-
-    processedData.totalCount++;
-
-    if (isEpisode.test(sub.link_flair_text)) {
-      const processedFlair = isEpisode.exec(sub.link_flair_text);
-      const seasonNum = parseInt(processedFlair[1]);
-      const episodeNum = parseInt(processedFlair[2]);
-
-      if (seasonNum > 0 && seasonNum <= seasonData.length &&
-        episodeNum > 0 && episodeNum <= seasonData[seasonNum - 1].numEpisodes) {
-        processedData.episodeCount++;
-
-        const subDetails = {
-          id: sub.id,
-          season: seasonNum,
-          episode: episodeNum,
-          title: sub.title,
-          score: sub.score,
-          comments: sub.num_comments,
-          postedBy: sub.author,
-          date: sub.created_utc,
-          subLink: `https://reddit.com${sub.permalink}`,
-          mediaLink: sub.url
-        };
-
-        processedData.submissions.push(subDetails);
-      }
-
-      else {
-        processedData.invalidCount++;
-      }
-    }
-
-    else if (isNews.test(sub.link_flair_text)) {
-      processedData.newsCount++;
-    }
-
-    else if (isOC.test(sub.link_flair_text)) {
-      processedData.ocCount++;
-    }
-
-    else if (isShitpost.test(sub.link_flair_text)) {
-      processedData.shitpostCount++;
-    }
-
-    else {
-      processedData.unknownCount++;
-    }
-  });
-
-  return processedData;
-};
-
-const _querySubreddit = (limit = 10, pages = 1, before, after, delay = defaultDelay) => {
-  const baseUrl = 'https://api.pushshift.io/reddit/submission/search';
-  const startUtime = before !== 0 && !before ? Math.floor(new Date() / 1000) : before;
-  const endUtime = after !== 0 && !after ? 0 : after;
-  lastUpdated = Math.floor(new Date() / 1000);
-
-  const query = {
-    subreddit: 'TheSimpsons',
-    limit: parseInt(limit) || 10,
-    before: startUtime,
-    after: endUtime,
-    sort: 'desc',
-    sort_type: 'created_utc'
-  };
-
-  let processedData = {
-    totalCount: 0,
-    episodeCount: 0,
-    newsCount: 0,
-    ocCount: 0,
-    shitpostCount: 0,
-    invalidCount: 0,
-    unknownCount: 0,
-    submissions: []
-  };
-
-  let currentPage = 0;
-
-  const makeRequest = (resolve, reject) => {
-    inlineWriteNotInTest(`On page ${currentPage + 1} of ${pages}`);
-
-    request.get({
-      url: baseUrl,
-      qs: query
-    }, (error, response, body) => {
-
-      if (error) {
-        reject({
-          status: 'error',
-          message: 'Cannot connect to external API'
-        });
-      }
-
-      else if (response.statusCode === 404) {
-        reject({
-          status: 'error',
-          message: 'Cannot find external API resource'
-        });
-      }
-
-      else {
-        const subs = JSON.parse(body).data;
-
-        if (subs.length === 0) {
-          resolve({
-            status: 'ok',
-            message: `only ${processedData.submissions.length} submissions processed`,
-            data: processedData
-          });
-          return;
-        }
-
-        processedData = { ..._processSubmissions(subs, processedData) };
-        currentPage++;
-
-        if (currentPage < pages) {
-          query.before = subs[subs.length - 1].created_utc;
-          setTimeout(() => makeRequest(resolve, reject), delay);
-        }
-
-        else {
-          resolve({
-            status: 'ok',
-            message: `all ${processedData.submissions.length} submissions processed`,
-            data: processedData
-          });
-        }
-      }
-    });
-  };
-
-  return new Promise((resolve, reject) => makeRequest(resolve, reject));
-};
-
-const _updateDatabase = (data) => {
-  return new Promise((resolve, reject) => {
-    if (!data.submissions || !(data.submissions instanceof Array)) {
-      reject({
-        status: 'error',
-        message: 'Could not update database: bad data.'
-      });
-    }
-
-    logNotInTest('\nUpdating database...');
-
-    let bulk = Submission.collection.initializeOrderedBulkOp();
-    let counter = 0;
-    let batchNumber = 0;
-
-    const batchFactory = (n) => {
-      const myNumber = n;
-
-      return (error) => {
-        if (error) {
-          reject({
-            status: 'error',
-            message: 'Could not update database: write failed.'
-          });
-        }
-
-        logNotInTest(`Batch ${myNumber} complete...`);
-
-        bulk = Submission.collection.initializeOrderedBulkOp();
-      };
-    };
-
-    logNotInTest('Updating meta...');
-
-    Meta.findOneAndUpdate({}, {
-      lastUpdated: lastUpdated
-    }, (err) => {
-      if (err) {
-        reject({
-          status: 'error',
-          message: 'Could not update metadata.'
-        });
-        return;
-      }
-
-      logNotInTest('Done!');
-      data.submissions.forEach(sub => {
-        inlineWriteNotInTest(`Preparing bulk: ${counter + 1} of ${data.submissions.length}`);
-
-        bulk.find({ id: sub.id }).upsert().updateOne(sub);
-        counter++;
-
-        if (counter % 1000 == 0) {
-          logNotInTest(`\nExecuting batch ${batchNumber}...`);
-          bulk.execute(batchFactory(batchNumber));
-
-          batchNumber++;
-        }
-      });
-
-      if (counter > 0) {
-        bulk.execute((error) => {
-          logNotInTest('\nExecuting final batch...');
-          if (error) {
-            reject({
-              status: 'error',
-              message: 'Could not update database: write failed.'
-            });
-          }
-
-          else {
-            logNotInTest('Done!');
-            resolve({
-              status: 'ok',
-              message: 'Finished updating database!',
-            });
-          }
-        });
-      }
-
-      else {
-        logNotInTest('Done!');
-        resolve({
-          status: 'ok',
-          message: 'Finished updating database!',
-        });
-      }
-    });
-  });
-};
 
 const checkRateLimit = () => {
   logNotInTest('Checking rate limit...');
@@ -362,12 +124,11 @@ const getNewestSubFromDB = () => {
   });
 };
 
-
 const getSubmissions = (limit = 10, pages = 1, before, after = 0) => {
   return new Promise((resolve, reject) => {
-    _querySubreddit(limit, pages, before, after, defaultDelay)
+    querySubreddit(limit, pages, before, after, defaultDelay)
       .then(results => {
-        _updateDatabase(results.data)
+        updateDatabase(results.data)
           .then(() => {
             resolve(results);
           });
@@ -377,53 +138,241 @@ const getSubmissions = (limit = 10, pages = 1, before, after = 0) => {
   });
 };
 
-const queryDatabase = (query, limit, seasonStats) => {
+const processSubmissions = (rawData, processedData) => {
+  // Check for invalid arguments
+  if (!rawData || !processedData || !processedData.submissions) {
+    return processedData;
+  }
+
+  rawData.forEach(sub => {
+    const isEpisode = /s0*(\d+)e0*(\d+)/i;
+    const isNews = /news/i;
+    const isOC = /oc/i;
+    const isShitpost = /shitpost/i;
+
+    processedData.totalCount++;
+
+    if (isEpisode.test(sub.link_flair_text)) {
+      const processedFlair = isEpisode.exec(sub.link_flair_text);
+      const seasonNum = parseInt(processedFlair[1]);
+      const episodeNum = parseInt(processedFlair[2]);
+
+      if (seasonNum > 0 && seasonNum <= seasonData.length &&
+        episodeNum > 0 && episodeNum <= seasonData[seasonNum - 1].numEpisodes) {
+        processedData.episodeCount++;
+
+        const subDetails = {
+          id: sub.id,
+          season: seasonNum,
+          episode: episodeNum,
+          title: sub.title,
+          score: sub.score,
+          comments: sub.num_comments,
+          postedBy: sub.author,
+          date: sub.created_utc,
+          subLink: `https://reddit.com${sub.permalink}`,
+          mediaLink: sub.url
+        };
+
+        processedData.submissions.push(subDetails);
+      }
+
+      else {
+        processedData.invalidCount++;
+      }
+    }
+
+    else if (isNews.test(sub.link_flair_text)) {
+      processedData.newsCount++;
+    }
+
+    else if (isOC.test(sub.link_flair_text)) {
+      processedData.ocCount++;
+    }
+
+    else if (isShitpost.test(sub.link_flair_text)) {
+      processedData.shitpostCount++;
+    }
+
+    else {
+      processedData.unknownCount++;
+    }
+  });
+
+  return processedData;
+};
+
+const querySubreddit = (limit = 10, pages = 1, before, after, delay = defaultDelay) => {
+  const baseUrl = 'https://api.pushshift.io/reddit/submission/search';
+  const startUtime = before !== 0 && !before ? Math.floor(new Date() / 1000) : before;
+  const endUtime = after !== 0 && !after ? 0 : after;
+  lastUpdated = Math.floor(new Date() / 1000);
+
+  const query = {
+    subreddit: 'TheSimpsons',
+    limit: parseInt(limit) || 10,
+    before: startUtime,
+    after: endUtime,
+    sort: 'desc',
+    sort_type: 'created_utc'
+  };
+
+  let processedData = {
+    totalCount: 0,
+    episodeCount: 0,
+    newsCount: 0,
+    ocCount: 0,
+    shitpostCount: 0,
+    invalidCount: 0,
+    unknownCount: 0,
+    submissions: []
+  };
+
+  let currentPage = 0;
+
+  const makeRequest = (resolve, reject) => {
+    inlineWriteNotInTest(`On page ${currentPage + 1} of ${pages}`);
+
+    request.get({
+      url: baseUrl,
+      qs: query
+    }, (error, response, body) => {
+
+      if (error) {
+        reject({
+          status: 'error',
+          message: 'Cannot connect to external API'
+        });
+      }
+
+      else if (response.statusCode === 404) {
+        reject({
+          status: 'error',
+          message: 'Cannot find external API resource'
+        });
+      }
+
+      else {
+        const subs = JSON.parse(body).data;
+
+        if (subs.length === 0) {
+          resolve({
+            status: 'ok',
+            message: `only ${processedData.submissions.length} submissions processed`,
+            data: processedData
+          });
+          return;
+        }
+
+        processedData = { ...processSubmissions(subs, processedData) };
+        currentPage++;
+
+        if (currentPage < pages) {
+          query.before = subs[subs.length - 1].created_utc;
+          setTimeout(() => makeRequest(resolve, reject), delay);
+        }
+
+        else {
+          resolve({
+            status: 'ok',
+            message: `all ${processedData.submissions.length} submissions processed`,
+            data: processedData
+          });
+        }
+      }
+    });
+  };
+
+  return new Promise((resolve, reject) => makeRequest(resolve, reject));
+};
+
+const updateDatabase = (data) => {
   return new Promise((resolve, reject) => {
-    Meta.findOne({}, '-_id -__v', (err, meta) => {
+    if (!data.submissions || !(data.submissions instanceof Array)) {
+      reject({
+        status: 'error',
+        message: 'Could not update database: bad data.'
+      });
+    }
+
+    logNotInTest('\nUpdating database...');
+
+    let bulk = Submission.collection.initializeOrderedBulkOp();
+    let counter = 0;
+    let batchNumber = 0;
+
+    const batchFactory = (n) => {
+      const myNumber = n;
+
+      return (error) => {
+        if (error) {
+          reject({
+            status: 'error',
+            message: 'Could not update database: write failed.'
+          });
+        }
+
+        logNotInTest(`Batch ${myNumber} complete...`);
+
+        bulk = Submission.collection.initializeOrderedBulkOp();
+      };
+    };
+
+    logNotInTest('Updating meta...');
+
+    Meta.findOneAndUpdate({}, {
+      lastUpdated: lastUpdated
+    }, (err) => {
       if (err) {
         reject({
           status: 'error',
-          message: 'Could not get metadata.'
+          message: 'Could not update metadata.'
         });
         return;
       }
 
-      Submission.find(query, '-_id -__v', { limit: limit }, (err, subs) => {
-        if (err) {
-          reject({
-            status: 'error',
-            message: 'Could not query database.'
-          });
+      logNotInTest('Done!');
+      data.submissions.forEach(sub => {
+        inlineWriteNotInTest(`Preparing bulk: ${counter + 1} of ${data.submissions.length}`);
+
+        bulk.find({ id: sub.id }).upsert().updateOne(sub);
+        counter++;
+
+        if (counter % 1000 == 0) {
+          logNotInTest(`\nExecuting batch ${batchNumber}...`);
+          bulk.execute(batchFactory(batchNumber));
+
+          batchNumber++;
         }
-  
-        if (seasonStats) {
-          const stats = [];
-          for (let i = 0; i < seasonData.length; i++) {
-            stats.push([]);
+      });
+
+      if (counter > 0) {
+        bulk.execute((error) => {
+          logNotInTest('\nExecuting final batch...');
+          if (error) {
+            reject({
+              status: 'error',
+              message: 'Could not update database: write failed.'
+            });
           }
-  
-          subs.forEach(sub => {
-            if (sub.season > 0 && sub.season <= seasonData.length &&
-              sub.episode > 0 && sub.episode <= seasonData[sub.season - 1].numEpisodes) {
-              stats[sub.season - 1][sub.episode - 1] = stats[sub.season - 1][sub.episode - 1] + 1 || 1;
-            }
-          });
-  
-          resolve({
-            status: 'ok',
-            message: 'season stats only',
-            lastUpdated: meta.lastUpdated,
-            data: stats
-          });
-        }
-  
+
+          else {
+            logNotInTest('Done!');
+            resolve({
+              status: 'ok',
+              message: 'Finished updating database!',
+            });
+          }
+        });
+      }
+
+      else {
+        logNotInTest('Done!');
         resolve({
           status: 'ok',
-          message: 'ok',
-          lastUpdated: meta.lastUpdated,
-          data: subs
+          message: 'Finished updating database!',
         });
-      });
+      }
     });
   });
 };
@@ -434,5 +383,7 @@ module.exports = {
   getOldestSubFromDB,
   getNewestSubFromDB,
   getSubmissions,
-  queryDatabase
-};
+  processSubmissions,
+  querySubreddit,
+  updateDatabase
+}

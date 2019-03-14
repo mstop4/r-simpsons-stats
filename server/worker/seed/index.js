@@ -1,8 +1,8 @@
 const mongoose = require('mongoose');
-//const Episode = require('../schemas/Episode');
-const Submission = require('../schemas/Submission');
-const Season = require('../schemas/Season');
-const Meta = require('../schemas/Meta');
+//const Episode = require('../../common/schemas/Episode');
+const Submission = require('../../common/schemas/Submission');
+const Season = require('../../common/schemas/Season');
+const Meta = require('../../common/schemas/Meta');
 
 const numEpisodes = [
   13,
