@@ -5,7 +5,7 @@
   "main": "index.js",
   "scripts": {
     "start:web": "nodemon web/index.js",
-    "start:worker": "node worker/index.js",
+    "run:worker": "node worker/index.js",
     "seed": "node worker/seed/index.js",
     "test:web": "npx mocha web/test/*.test.js",
     "test:worker": "npx mocha worker/test/*.test.js"

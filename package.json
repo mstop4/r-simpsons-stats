@@ -6,6 +6,7 @@
   "scripts": {
     "start:client": "cd client && yarn start",
     "start:web": "cd server && yarn start:web",
+    "run:worker": "cd server && yarn run:worker",
     "test:server": "cd server && yarn test:web && yarn test:worker",
     "seed": "cd server && yarn seed"
   },

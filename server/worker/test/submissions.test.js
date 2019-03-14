@@ -13,7 +13,9 @@ const rawTestData = require('../../common/test/data/rawTestData');
 const seasonTestData = require('../../common/test/data/seasonData');
 
 describe('Submissions Library', () => {
-  describe('processSubmissions', () => {
+  const _processSubmissions = subLib.__get__('_processSubmissions');
+
+  describe('_processSubmissions', () => {
     const templateProcessedData = {
       episodeCount: 0,
       newsCount: 0,
@@ -45,7 +47,7 @@ describe('Submissions Library', () => {
         submissions: []
       };
   
-      subLib.processSubmissions(rawTestData, processedData);
+      _processSubmissions(rawTestData, processedData);
 
       expect(processedData.episodeCount).to.equal(9);
       expect(processedData.newsCount).to.equal(0);
@@ -59,7 +61,7 @@ describe('Submissions Library', () => {
       const rawData = [];
       const processedData = {...templateProcessedData};
   
-      subLib.processSubmissions(rawData, processedData);
+      _processSubmissions(rawData, processedData);
 
       expect(processedData).to.deep.equal(templateProcessedData);
     });
@@ -68,7 +70,7 @@ describe('Submissions Library', () => {
       const rawData = undefined;
       const processedData = {...templateProcessedData};
   
-      subLib.processSubmissions(rawData, processedData);
+      _processSubmissions(rawData, processedData);
 
       expect(processedData).to.deep.equal(templateProcessedData);
     });
@@ -76,7 +78,7 @@ describe('Submissions Library', () => {
     it('should process nothing with invalid process data container', () => {
       const processedData = {...invalidProcessedData};
   
-      subLib.processSubmissions(rawTestData, processedData);
+      _processSubmissions(rawTestData, processedData);
   
       expect(processedData).to.deep.equal(invalidProcessedData);
     });
@@ -84,13 +86,15 @@ describe('Submissions Library', () => {
     it('should process nothing with no process data container', () => {
       const processedData = undefined;
   
-      subLib.processSubmissions(rawTestData, processedData);
+      _processSubmissions(rawTestData, processedData);
   
       expect(processedData).to.equal(undefined);
     });
   });
 
-  describe('updateDatabase', () => {
+  describe('_updateDatabase', () => {
+    const _updateDatabase = subLib.__get__('_updateDatabase');
+
     const fakeBulk = { 
       find: function () {
         return this;
@@ -112,7 +116,7 @@ describe('Submissions Library', () => {
     it('should update the database', async () => {
       const stubMeta = sinon.stub(Meta, 'findOneAndUpdate').yields(null);
       const stubBulk = sinon.stub(Submission.collection, 'initializeOrderedBulkOp').returns(fakeBulk);
-      await subLib.updateDatabase(processedTestData);
+      await _updateDatabase(processedTestData);
       
       expect(fakeBulk.updateOne.called).to.equal(true);
       expect(fakeBulk.execute.calledOnce).to.equal(true);
@@ -125,7 +129,7 @@ describe('Submissions Library', () => {
       const stubBulk = sinon.stub(Submission.collection, 'initializeOrderedBulkOp').returns(fakeBulk);
       
       try {
-        await subLib.updateDatabase(processedTestData);
+        await _updateDatabase(processedTestData);
       }
       
       catch (error) {
@@ -146,7 +150,7 @@ describe('Submissions Library', () => {
       const stubBulk = sinon.stub(Submission.collection, 'initializeOrderedBulkOp').returns(modFakeBulk);
       
       try {
-        await subLib.updateDatabase(processedTestData);
+        await _updateDatabase(processedTestData);
       }
       
       catch (error) {
@@ -166,7 +170,7 @@ describe('Submissions Library', () => {
       const stubMeta = sinon.stub(Meta, 'findOneAndUpdate').yields(null);
       const stubBulk = sinon.stub(Submission.collection, 'initializeOrderedBulkOp').returns(fakeBulk);
 
-      await subLib.updateDatabase(noSubs);
+      await _updateDatabase(noSubs);
       expect(fakeBulk.updateOne.called).to.equal(false);
       expect(fakeBulk.execute.calledOnce).to.equal(false);
       stubBulk.restore();
@@ -180,7 +184,7 @@ describe('Submissions Library', () => {
       const stubBulk = sinon.stub(Submission.collection, 'initializeOrderedBulkOp').returns(fakeBulk);
 
       try {
-        await subLib.updateDatabase(wrongSubs);
+        await _updateDatabase(wrongSubs);
       }
       
       catch (error) {
@@ -201,7 +205,7 @@ describe('Submissions Library', () => {
       const stubBulk = sinon.stub(Submission.collection, 'initializeOrderedBulkOp').returns(fakeBulk);
 
       try {
-        await subLib.updateDatabase(wrongSubs);
+        await _updateDatabase(wrongSubs);
       }
       
       catch (error) {
@@ -216,8 +220,9 @@ describe('Submissions Library', () => {
     });
   });
 
-  describe('querySubreddit', () => {
-    const processSubmissions = sinon.stub().returns(processedTestData);
+  describe('_querySubreddit', () => {
+    const _querySubreddit = subLib.__get__('_querySubreddit');
+    const _processSubmissions = sinon.stub().returns(processedTestData);
 
     const rawDataString = JSON.stringify({
       data: rawTestData
@@ -237,7 +242,7 @@ describe('Submissions Library', () => {
     it('should resolve with supplied arguments', async () => {
       const fakeRequest = sinon.stub(request, 'get').yields(null, { statusCode: 200 }, rawDataString);
 
-      const result = await subLib.querySubreddit(10, 5, null, undefined, 250);
+      const result = await _querySubreddit(10, 5, null, undefined, 250);
 
       expect(result.status).to.equal('ok');
       expect(result.message).to.equal('all 45 submissions processed');
@@ -248,7 +253,7 @@ describe('Submissions Library', () => {
     it('should resolve using default arguments', async () => {
       const fakeRequest = sinon.stub(request, 'get').yields(null, { statusCode: 200 }, rawDataString);
 
-      const result = await subLib.querySubreddit();
+      const result = await _querySubreddit();
 
       expect(result.status).to.equal('ok');
       expect(result.message).to.equal('all 9 submissions processed');
@@ -260,7 +265,7 @@ describe('Submissions Library', () => {
       const fakeRequest = sinon.stub(request, 'get').yields({ error: 'yes'}, { statusCode: 404 }, null);
 
       try {
-        await subLib.querySubreddit(10, 5, null, undefined, 250);
+        await _querySubreddit(10, 5, null, undefined, 250);
       }
 
       catch (error) {
@@ -278,7 +283,7 @@ describe('Submissions Library', () => {
       const fakeRequest = sinon.stub(request, 'get').yields(null, { statusCode: 404 }, null);
 
       try {
-        await subLib.querySubreddit(10, 5, null, undefined, 250);
+        await _querySubreddit(10, 5, null, undefined, 250);
       }
 
       catch (error) {
@@ -295,7 +300,7 @@ describe('Submissions Library', () => {
     // it('should prematurely resolve after requesting more submissions that available', async () => {
     //   const fakeRequest = sinon.stub(request, 'get').yields(null, { statusCode: 200 }, processedDataString);
 
-    //   const result = await subLib.querySubreddit(10, 5, null, undefined, -250);
+    //   const result = await _querySubreddit(10, 5, null, undefined, -250);
 
     //   expect(result.status).to.equal('ok');
     //   expect(result.message).to.equal('only 45 submissions processed');
@@ -306,7 +311,7 @@ describe('Submissions Library', () => {
     it('should resolve even with a negative result limit', async () => {
       const fakeRequest = sinon.stub(request, 'get').yields(null, { statusCode: 200 }, rawDataString);
 
-      const result = await subLib.querySubreddit(-10, 5, null, undefined, 250);
+      const result = await _querySubreddit(-10, 5, null, undefined, 250);
 
       expect(result.status).to.equal('ok');
       expect(result.message).to.equal('all 45 submissions processed');
@@ -317,7 +322,7 @@ describe('Submissions Library', () => {
     it('should resolve even with a negative page limit', async () => {
       const fakeRequest = sinon.stub(request, 'get').yields(null, { statusCode: 200 }, rawDataString);
 
-      const result = await subLib.querySubreddit(10, -5, null, undefined, 250);
+      const result = await _querySubreddit(10, -5, null, undefined, 250);
 
       expect(result.status).to.equal('ok');
       expect(result.message).to.equal('all 9 submissions processed');
@@ -328,7 +333,7 @@ describe('Submissions Library', () => {
     it('should resolve even with a negative delay', async () => {
       const fakeRequest = sinon.stub(request, 'get').yields(null, { statusCode: 200 }, rawDataString);
 
-      const result = await subLib.querySubreddit(10, 5, null, undefined, -250);
+      const result = await _querySubreddit(10, 5, null, undefined, -250);
 
       expect(result.status).to.equal('ok');
       expect(result.message).to.equal('all 45 submissions processed');

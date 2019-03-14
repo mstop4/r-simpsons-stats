@@ -126,9 +126,9 @@ const getNewestSubFromDB = () => {
 
 const getSubmissions = (limit = 10, pages = 1, before, after = 0) => {
   return new Promise((resolve, reject) => {
-    querySubreddit(limit, pages, before, after, defaultDelay)
+    _querySubreddit(limit, pages, before, after, defaultDelay)
       .then(results => {
-        updateDatabase(results.data)
+        _updateDatabase(results.data)
           .then(() => {
             resolve(results);
           });
@@ -138,7 +138,7 @@ const getSubmissions = (limit = 10, pages = 1, before, after = 0) => {
   });
 };
 
-const processSubmissions = (rawData, processedData) => {
+const _processSubmissions = (rawData, processedData) => {
   // Check for invalid arguments
   if (!rawData || !processedData || !processedData.submissions) {
     return processedData;
@@ -202,7 +202,7 @@ const processSubmissions = (rawData, processedData) => {
   return processedData;
 };
 
-const querySubreddit = (limit = 10, pages = 1, before, after, delay = defaultDelay) => {
+const _querySubreddit = (limit = 10, pages = 1, before, after, delay = defaultDelay) => {
   const baseUrl = 'https://api.pushshift.io/reddit/submission/search';
   const startUtime = before !== 0 && !before ? Math.floor(new Date() / 1000) : before;
   const endUtime = after !== 0 && !after ? 0 : after;
@@ -264,7 +264,7 @@ const querySubreddit = (limit = 10, pages = 1, before, after, delay = defaultDel
           return;
         }
 
-        processedData = { ...processSubmissions(subs, processedData) };
+        processedData = { ..._processSubmissions(subs, processedData) };
         currentPage++;
 
         if (currentPage < pages) {
@@ -286,7 +286,7 @@ const querySubreddit = (limit = 10, pages = 1, before, after, delay = defaultDel
   return new Promise((resolve, reject) => makeRequest(resolve, reject));
 };
 
-const updateDatabase = (data) => {
+const _updateDatabase = (data) => {
   return new Promise((resolve, reject) => {
     if (!data.submissions || !(data.submissions instanceof Array)) {
       reject({
@@ -382,8 +382,5 @@ module.exports = {
   getMetaDataFromDB,
   getOldestSubFromDB,
   getNewestSubFromDB,
-  getSubmissions,
-  processSubmissions,
-  querySubreddit,
-  updateDatabase
-}
+  getSubmissions
+};

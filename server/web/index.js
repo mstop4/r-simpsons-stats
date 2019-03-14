@@ -19,6 +19,7 @@ if (process.env.ENV === 'test') {
 } else {
   mongoose.connect('mongodb://localhost/rSimpsonsStats', { useNewUrlParser: true } );
 }
+
 const db = mongoose.connection;
 
 db.on('error', () => console.log('Could not connect to database'));
