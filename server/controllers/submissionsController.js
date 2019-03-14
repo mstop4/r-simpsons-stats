@@ -379,38 +379,50 @@ const getSubmissions = (limit = 10, pages = 1, before, after = 0) => {
 
 const queryDatabase = (query, limit, seasonStats) => {
   return new Promise((resolve, reject) => {
-    Submission.find(query, '-_id -__v', { limit: limit }, (err, subs) => {
+    Meta.findOne({}, '-_id -__v', (err, meta) => {
       if (err) {
         reject({
           status: 'error',
-          message: 'Could not query database.'
+          message: 'Could not get metadata.'
         });
+        return;
       }
 
-      if (seasonStats) {
-        const stats = [];
-        for (let i = 0; i < seasonData.length; i++) {
-          stats.push([]);
+      Submission.find(query, '-_id -__v', { limit: limit }, (err, subs) => {
+        if (err) {
+          reject({
+            status: 'error',
+            message: 'Could not query database.'
+          });
         }
-
-        subs.forEach(sub => {
-          if (sub.season > 0 && sub.season <= seasonData.length &&
-            sub.episode > 0 && sub.episode <= seasonData[sub.season - 1].numEpisodes) {
-            stats[sub.season - 1][sub.episode - 1] = stats[sub.season - 1][sub.episode - 1] + 1 || 1;
+  
+        if (seasonStats) {
+          const stats = [];
+          for (let i = 0; i < seasonData.length; i++) {
+            stats.push([]);
           }
-        });
-
+  
+          subs.forEach(sub => {
+            if (sub.season > 0 && sub.season <= seasonData.length &&
+              sub.episode > 0 && sub.episode <= seasonData[sub.season - 1].numEpisodes) {
+              stats[sub.season - 1][sub.episode - 1] = stats[sub.season - 1][sub.episode - 1] + 1 || 1;
+            }
+          });
+  
+          resolve({
+            status: 'ok',
+            message: 'season stats only',
+            lastUpdated: meta.lastUpdated,
+            data: stats
+          });
+        }
+  
         resolve({
           status: 'ok',
-          message: 'season stats only',
-          data: stats
+          message: 'ok',
+          lastUpdated: meta.lastUpdated,
+          data: subs
         });
-      }
-
-      resolve({
-        status: 'ok',
-        message: 'ok',
-        data: subs
       });
     });
   });

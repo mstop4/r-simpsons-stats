@@ -2,9 +2,9 @@ import React, { Component } from 'react';
 import Chart from 'chart.js';
 import SeasonDetails from './SeasonDetails';
 import SeasonSelector from './SeasonSelector';
-import '../App.css';
+import '../styles/BarChart.css';
 
-class App extends Component {
+class BarChart extends Component {
   constructor(props) {
     super(props);
     this.state = {
@@ -13,7 +13,8 @@ class App extends Component {
       chartData: [],
       showChart: false,
       seasonDetails: false,
-      seasonNum: 1
+      seasonNum: 1,
+      lastUpdated: 0
     };
 
     this.myChart = null;
@@ -130,26 +131,27 @@ class App extends Component {
         if (seasonData.status === 'ok') {
           fetch('/submissions?season=0&seasonstats=true')
             .then(res => res.json())
-            .then(chartData => {
-              
-              if (chartData.status === 'ok') {
+            .then(seasonStats => {
+        
+              if (seasonStats.status === 'ok') {
                 let newChartData;
 
                 if (this.state.seasonDetails) {
-                  newChartData = chartData.data[this.state.seasonNum-1];
+                  newChartData = seasonStats.data[this.state.seasonNum-1];
                 }
 
                 else {
-                  newChartData = chartData.data.map(season => {
+                  newChartData = seasonStats.data.map(season => {
                     return season.reduce((sum, num) => sum + num);
                   });
                 }
 
                 this.setState({
                   seasonData: seasonData.data,
-                  completeData: chartData.data,
+                  completeData: seasonStats.data,
                   chartData: newChartData,
-                  showChart: true
+                  showChart: true,
+                  lastUpdated: seasonStats.lastUpdated
                 });
               }
             });
@@ -172,10 +174,11 @@ class App extends Component {
 
   render = () => {
     const chartClass = !this.state.showChart ? 'chart--hidden' : '';
+    const dateString = new Date(this.state.lastUpdated * 1000).toLocaleString();
 
     return (
       <div>
-        {!this.state.showChart && <p>Fetching data...</p>}
+        {this.state.showChart ? <p>Last updated: {dateString}</p> : <p>Fetching data...</p>}
         <div id="chartWrapper" className={chartClass}>
           <canvas id="myChart" width="400" height="400"></canvas>
         </div>
@@ -188,9 +191,10 @@ class App extends Component {
           curSeason={this.state.seasonNum}
           handleChange={this.handleSeasonSelection}
         />
+
       </div>
     );
   }
 }
 
-export default App;
+export default BarChart;
