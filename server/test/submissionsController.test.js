@@ -5,6 +5,7 @@ const expect = require('chai').expect;
 const sinon = require('sinon');
 const rewire = require('rewire');
 const Submission = require('../schemas/Submission');
+const Meta = require('../schemas/Meta');
 const subCon = rewire('../controllers/submissionsController');
 
 const processedTestData = require('./data/processedTestData');
@@ -113,17 +114,39 @@ describe('Submissions Controller', () => {
     });
 
     it('should update the database', async () => {
+      const stubMeta = sinon.stub(Meta, 'findOneAndUpdate').yields(null);
       const stubBulk = sinon.stub(Submission.collection, 'initializeOrderedBulkOp').returns(fakeBulk);
       await _updateDatabase(processedTestData);
       
       expect(fakeBulk.updateOne.called).to.equal(true);
       expect(fakeBulk.execute.calledOnce).to.equal(true);
       stubBulk.restore();
+      stubMeta.restore();
     });
 
-    it('should not update the database due to an error', async () => {
+    it('should not update the database due to an error with updating metadata', async () => {
+      const stubMeta = sinon.stub(Meta, 'findOneAndUpdate').yields({ error: 'yes' });
+      const stubBulk = sinon.stub(Submission.collection, 'initializeOrderedBulkOp').returns(fakeBulk);
+      
+      try {
+        await _updateDatabase(processedTestData);
+      }
+      
+      catch (error) {
+        expect(fakeBulk.updateOne.called).to.equal(false);
+        expect(fakeBulk.execute.calledOnce).to.equal(false);
+      }
+      
+      finally {
+        stubBulk.restore();
+        stubMeta.restore();
+      }
+    });
+
+    it('should not update the database due to an error with excuting bulk', async () => {
       const modFakeBulk = {...fakeBulk};
       modFakeBulk.execute = sinon.stub().yields({ error: 'yes' }, { updated: 'no' });
+      const stubMeta = sinon.stub(Meta, 'findOneAndUpdate').yields(null);
       const stubBulk = sinon.stub(Submission.collection, 'initializeOrderedBulkOp').returns(modFakeBulk);
       
       try {
@@ -137,21 +160,27 @@ describe('Submissions Controller', () => {
       
       finally {
         stubBulk.restore();
+        stubMeta.restore();
       }
     });
 
     it('should update the database with no changes', async () => {
-      const noSubs = [];
+      const noSubs = {...processedTestData};
+      noSubs.submissions = [];
+      const stubMeta = sinon.stub(Meta, 'findOneAndUpdate').yields(null);
       const stubBulk = sinon.stub(Submission.collection, 'initializeOrderedBulkOp').returns(fakeBulk);
 
       await _updateDatabase(noSubs);
       expect(fakeBulk.updateOne.called).to.equal(false);
       expect(fakeBulk.execute.calledOnce).to.equal(false);
       stubBulk.restore();
+      stubMeta.restore();
     });
     
     it('should not update the database due to bad data', async () => {
-      const wrongSubs = { name: 'Homer Thompson' };
+      const wrongSubs = {...processedTestData};
+      wrongSubs.submissions = { name: 'Homer Thompson '};
+      const stubMeta = sinon.stub(Meta, 'findOneAndUpdate').yields(null);
       const stubBulk = sinon.stub(Submission.collection, 'initializeOrderedBulkOp').returns(fakeBulk);
 
       try {
@@ -165,11 +194,14 @@ describe('Submissions Controller', () => {
       
       finally {
         stubBulk.restore();
+        stubMeta.restore();
       }
     });
 
     it('should not update the database due to undefined data', async () => {
-      const wrongSubs = undefined;
+      const wrongSubs = {...processedTestData};
+      wrongSubs.submissions = undefined;
+      const stubMeta = sinon.stub(Meta, 'findOneAndUpdate').yields(null);
       const stubBulk = sinon.stub(Submission.collection, 'initializeOrderedBulkOp').returns(fakeBulk);
 
       try {
@@ -183,6 +215,7 @@ describe('Submissions Controller', () => {
       
       finally {
         stubBulk.restore();
+        stubMeta.restore();
       }
     });
   });
@@ -346,7 +379,7 @@ describe('Submissions Controller', () => {
     });
 
     it('should resolve with season stats only', async () => {
-      const fakeFind = sinon.stub(Submission, 'find').yields(null, processedTestData);
+      const fakeFind = sinon.stub(Submission, 'find').yields(null, processedTestData.submissions);
       const result = await subCon.queryDatabase({}, 1, true);
       
       expect(result.status).to.equal('ok');

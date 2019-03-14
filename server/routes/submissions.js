@@ -36,7 +36,7 @@ router.get('/', (req, res) => {
   }
 });
 
-router.put('/updateoldest', (req, res) => {
+router.put('/update/oldest', (req, res) => {
   if (routeIsReady) {
     checkRateLimit()
       .then((delay) => {
@@ -65,7 +65,7 @@ router.put('/updateoldest', (req, res) => {
   }
 });
 
-router.put('/updatenewest', (req, res) => {
+router.put('/update/newest', (req, res) => {
   if (routeIsReady) {
     checkRateLimit()
       .then((delay) => {

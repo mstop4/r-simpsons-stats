@@ -24,5 +24,6 @@ const db = mongoose.connection;
 db.on('error', () => console.log('Could not connect to database'));
 db.once('open', () => {
   console.log('Connected to database');
+  mongoose.set('useFindAndModify', false);
   app.server = app.listen(port, () => console.log(`r/TheSimpsons Stats server listening on port ${port}!`));
 });

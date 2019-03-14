@@ -1,14 +1,15 @@
 const request = require('request');
 const Submission = require('../schemas/Submission');
 const Season = require('../schemas/Season');
+const Meta = require('../schemas/Meta');
 const { logNotInTest, inlineWriteNotInTest } = require('../utils');
 const delayBuffer = 0;
 let defaultDelay = 250;
 
 let seasonData;
+let lastUpdated = 0;
 
 const _processSubmissions = (rawData, processedData) => {
-
   // Check for invalid arguments
   if (!rawData || !processedData || !processedData.submissions) {
     return processedData;
@@ -19,6 +20,8 @@ const _processSubmissions = (rawData, processedData) => {
     const isNews = /news/i;
     const isOC = /oc/i;
     const isShitpost = /shitpost/i;
+
+    processedData.totalCount++;
 
     if (isEpisode.test(sub.link_flair_text)) {
       const processedFlair = isEpisode.exec(sub.link_flair_text);
@@ -33,13 +36,20 @@ const _processSubmissions = (rawData, processedData) => {
           id: sub.id,
           season: seasonNum,
           episode: episodeNum,
+          title: sub.title,
           score: sub.score,
+          comments: sub.num_comments,
+          postedBy: sub.author,
           date: sub.created_utc,
           subLink: `https://reddit.com${sub.permalink}`,
           mediaLink: sub.url
         };
 
         processedData.submissions.push(subDetails);
+      }
+
+      else {
+        processedData.invalidCount++;
       }
     }
 
@@ -65,19 +75,9 @@ const _processSubmissions = (rawData, processedData) => {
 
 const _querySubreddit = (limit = 10, pages = 1, before, after, delay = defaultDelay) => {
   const baseUrl = 'https://api.pushshift.io/reddit/submission/search';
-  let startUtime;
-  let endUtime;
-
-  if (before !== 0 && !before) {
-    const startTime = new Date;
-    startUtime = Math.floor(startTime.getTime() / 1000);
-  }
-
-  else {
-    startUtime = before;
-  }
-
-  endUtime = after !== 0 && !after ? 0 : after;
+  const startUtime = before !== 0 && !before ? Math.floor(new Date() / 1000) : before;
+  const endUtime = after !== 0 && !after ? 0 : after;
+  lastUpdated = Math.floor(new Date() / 1000);
 
   const query = {
     subreddit: 'TheSimpsons',
@@ -89,10 +89,12 @@ const _querySubreddit = (limit = 10, pages = 1, before, after, delay = defaultDe
   };
 
   let processedData = {
+    totalCount: 0,
     episodeCount: 0,
     newsCount: 0,
     ocCount: 0,
     shitpostCount: 0,
+    invalidCount: 0,
     unknownCount: 0,
     submissions: []
   };
@@ -157,7 +159,7 @@ const _querySubreddit = (limit = 10, pages = 1, before, after, delay = defaultDe
 
 const _updateDatabase = (data) => {
   return new Promise((resolve, reject) => {
-    if (!data || !(data instanceof Array)) {
+    if (!data.submissions || !(data.submissions instanceof Array)) {
       reject({
         status: 'error',
         message: 'Could not update database: bad data.'
@@ -187,47 +189,62 @@ const _updateDatabase = (data) => {
       };
     };
 
-    data.forEach(sub => {
-      inlineWriteNotInTest(`Preparing bulk: ${counter + 1} of ${data.length}`);
+    logNotInTest('Updating meta...');
 
-      bulk.find({ id: sub.id }).upsert().updateOne(sub);
-      counter++;
+    Meta.findOneAndUpdate({}, {
+      lastUpdated: lastUpdated
+    }, (err) => {
+      if (err) {
+        reject({
+          status: 'error',
+          message: 'Could not update metadata.'
+        });
+        return;
+      }
 
-      if (counter % 1000 == 0) {
-        logNotInTest(`\nExecuting batch ${batchNumber}...`);
-        bulk.execute(batchFactory(batchNumber));
+      logNotInTest('Done!');
+      data.submissions.forEach(sub => {
+        inlineWriteNotInTest(`Preparing bulk: ${counter + 1} of ${data.submissions.length}`);
 
-        batchNumber++;
+        bulk.find({ id: sub.id }).upsert().updateOne(sub);
+        counter++;
+
+        if (counter % 1000 == 0) {
+          logNotInTest(`\nExecuting batch ${batchNumber}...`);
+          bulk.execute(batchFactory(batchNumber));
+
+          batchNumber++;
+        }
+      });
+
+      if (counter > 0) {
+        bulk.execute((error) => {
+          logNotInTest('\nExecuting final batch...');
+          if (error) {
+            reject({
+              status: 'error',
+              message: 'Could not update database: write failed.'
+            });
+          }
+
+          else {
+            logNotInTest('Done!');
+            resolve({
+              status: 'ok',
+              message: 'Finished updating database!',
+            });
+          }
+        });
+      }
+
+      else {
+        logNotInTest('Done!');
+        resolve({
+          status: 'ok',
+          message: 'Finished updating database!',
+        });
       }
     });
-
-    if (counter > 0) {
-      bulk.execute((error) => {
-        logNotInTest('\nExecuting final batch...');
-        if (error) {
-          reject({
-            status: 'error',
-            message: 'Could not update database: write failed.'
-          });
-        }
-
-        else {
-          logNotInTest('Done!');
-          resolve({
-            status: 'ok',
-            message: 'Finished updating database!',
-          });
-        }
-      });
-    }
-
-    else {
-      logNotInTest('Done!');
-      resolve({
-        status: 'ok',
-        message: 'Finished updating database!',
-      });
-    }
   });
 };
 
@@ -350,7 +367,7 @@ const getSubmissions = (limit = 10, pages = 1, before, after = 0) => {
   return new Promise((resolve, reject) => {
     _querySubreddit(limit, pages, before, after, defaultDelay)
       .then(results => {
-        _updateDatabase(results.data.submissions)
+        _updateDatabase(results.data)
           .then(() => {
             resolve(results);
           });
