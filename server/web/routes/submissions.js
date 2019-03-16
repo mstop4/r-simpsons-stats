@@ -1,10 +1,10 @@
 const express = require('express');
 const router = express.Router();
 
-const { queryDatabase, getMetaDataFromDB } = require('../controllers/submissionsController');
+const { queryDatabase, getSeasonDataFromDB } = require('../controllers/submissionsController');
 let routeIsReady = false;
 
-getMetaDataFromDB()
+getSeasonDataFromDB()
   .then(() => {
     routeIsReady = true;
   }, error => {
@@ -22,14 +22,17 @@ router.get('/', (req, res) => {
 
     queryDatabase(query, parseInt(req.query.limit), seasonStats)
       .then(results => {
-        res.json(results);
+        res.set({
+          'Cache-Control': 'public, max-age=0'
+        });
+        res.status(200).json(results);
       }, error => {
-        res.json(error);
+        res.status(400).json(error);
       });
   }
 
   else {
-    res.json({
+    res.status(503).json({
       status: 'error',
       message: '/submissions is not ready yet'
     });

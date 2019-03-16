@@ -1,5 +1,6 @@
 const mongoose = require('mongoose');
-const { getMetaDataFromDB, checkRateLimit, getOldestSubFromDB, getNewestSubFromDB, getSubmissions } = require('./libs/submissions');
+const argv = require('yargs').argv;
+const { getSeasonDataFromDB, checkRateLimit, getOldestSubFromDB, getNewestSubFromDB, getSubmissions } = require('./libs/submissions');
 
 const updateOldest = (limit, pages) => {
   return new Promise((resolve, reject) => {
@@ -77,22 +78,54 @@ const db = mongoose.connection;
 db.on('error', () => console.log('Could not connect to database'));
 db.once('open', () => {
   console.log('Connected to database');
-  getMetaDataFromDB()
+  getSeasonDataFromDB()
     .then(() => {
-      updateNewest(1000, 50)
-        .then(() => {
-          console.log('Update process complete!');
-        })
-        .catch(error => {
-          console.log(`Error: ${error}`);
-        })
-        .finally(() => {
-          console.log('Work finished. Goodbye!');
-          db.close();
-        });
+
+      switch (argv.mode) {
+        case 'newest':
+          updateNewest(argv.limit, argv.pages)
+            .then(() => {
+              console.log('Update process complete!');
+            })
+            .catch(error => {
+              console.log(`Error: ${error}`);
+            })
+            .finally(() => {
+              console.log('Work finished. Goodbye!');
+              db.close();
+            });
+          break;
+
+        case 'oldest':
+          updateOldest(argv.limit, argv.pages)
+            .then(() => {
+              console.log('Update process complete!');
+            })
+            .catch(error => {
+              console.log(`Error: ${error}`);
+            })
+            .finally(() => {
+              console.log('Work finished. Goodbye!');
+              db.close();
+            });
+          break;
+
+        default:
+          updateRange(argv.limit, argv.pages, argv.before, argv.after)
+            .then(() => {
+              console.log('Update process complete!');
+            })
+            .catch(error => {
+              console.log(`Error: ${error}`);
+            })
+            .finally(() => {
+              console.log('Work finished. Goodbye!');
+              db.close();
+            });
+      }
     }, error => {
       console.log(`Error: ${error.message}`);
-      console.log('Work finished. Goodbye!');
+      console.log('Work could not be completed. Goodbye!');
       db.close();
     });
 });

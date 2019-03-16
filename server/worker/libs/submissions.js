@@ -40,7 +40,7 @@ const checkRateLimit = () => {
   });
 };
 
-const getMetaDataFromDB = () => {
+const getSeasonDataFromDB = () => {
   return new Promise((resolve, reject) => {
     Season.find({}, null, { sort: { number: 1 } }, (err, data) => {
       if (err) {
@@ -379,7 +379,7 @@ const _updateDatabase = (data) => {
 
 module.exports = {
   checkRateLimit,
-  getMetaDataFromDB,
+  getSeasonDataFromDB,
   getOldestSubFromDB,
   getNewestSubFromDB,
   getSubmissions

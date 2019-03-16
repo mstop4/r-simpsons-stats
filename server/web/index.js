@@ -9,6 +9,7 @@ const submissions = require('./routes/submissions');
 const seasons = require('./routes/seasons');
 
 app.use(morgan('tiny'));
+app.set('etag', 'strong');
 
 app.use('', index);
 app.use('/submissions', submissions);
