@@ -5,6 +5,9 @@ const Meta = require('../../common/schemas/Meta');
 const { logNotInTest, inlineWriteNotInTest } = require('../../common/utils');
 
 const delayBuffer = 0;
+const ingestTimeBuffer = 60 * 60;
+const oneDayinSecs = 60 * 60 * 24;
+const oneWeekinSecs = oneDayinSecs * 7;
 let defaultDelay = 250;
 
 let seasonData;
@@ -63,63 +66,33 @@ const getSeasonDataFromDB = () => {
   });
 };
 
-const getOldestSubFromDB = () => {
+const getOldestSubByIngest = (maxIngestLevel = 1) => {
   return new Promise((resolve, reject) => {
-    Submission.findOne({}, null, { sort: { date: 1 } }, (err, sub) => {
+    Submission.find({ ingestLevel: { $lte: maxIngestLevel } }, '-_id', {sort: { date: 1 }, limit: 1}, (err, result) => {
       if (err) {
         reject({
           status: 'error',
-          message: 'Could not query database.'
+          message: 'Could not get submission.'
         });
       }
 
-      if (!sub) {
-        const startTime = new Date;
-        const startUtime = Math.floor(startTime.getTime() / 1000);
-
+      else if (result.length === 0) {
         resolve({
           status: 'ok',
-          message: 'no submissions in database, returning current time',
-          data: {
-            date: startUtime
-          }
-        });
-      }
-
-      resolve({
-        status: 'ok',
-        message: 'ok',
-        data: sub
-      });
-    });
-  });
-};
-
-const getNewestSubFromDB = () => {
-  return new Promise((resolve, reject) => {
-    Submission.findOne({}, null, { sort: { date: -1 } }, (err, sub) => {
-      if (err) {
-        reject({
-          status: 'error',
-          message: 'Could not query database.'
-        });
-      }
-
-      if (!sub) {
-        resolve({
-          status: 'ok',
-          message: 'no submissions in database, returning 0',
+          message: 'no submissions found',
           data: {
             date: 0
           }
         });
       }
 
-      resolve({
-        status: 'ok',
-        message: 'ok',
-        data: sub
-      });
+      else {
+        resolve({
+          status: 'ok',
+          message: 'ok',
+          data: result[0]
+        });
+      }
     });
   });
 };
@@ -171,8 +144,24 @@ const _processSubmissions = (rawData, processedData) => {
           postedBy: sub.author,
           date: sub.created_utc,
           subLink: `https://reddit.com${sub.permalink}`,
-          mediaLink: sub.url
+          mediaLink: sub.url,
+          ingestLevel: 0
         };
+
+        // adjust ingest level based on age of post
+        const age = ((new Date()) - (new Date(sub.created_utc * 1000))) / 1000;
+
+        if (age >= oneWeekinSecs + ingestTimeBuffer) {
+          subDetails.ingestLevel = 2;
+        }
+
+        else if (age >= oneDayinSecs + ingestTimeBuffer) {
+          subDetails.ingestLevel = 1;
+        }
+
+        else {
+          subDetails.ingestLevel = 0;
+        }
 
         processedData.submissions.push(subDetails);
       }
@@ -379,8 +368,7 @@ const _updateDatabase = (data) => {
 
 module.exports = {
   checkRateLimit,
+  getOldestSubByIngest,
   getSeasonDataFromDB,
-  getOldestSubFromDB,
-  getNewestSubFromDB,
   getSubmissions
 };

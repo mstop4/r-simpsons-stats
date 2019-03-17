@@ -22,10 +22,7 @@ router.get('/', (req, res) => {
 
     queryDatabase(query, parseInt(req.query.limit), seasonStats)
       .then(results => {
-        res.set({
-          'Cache-Control': 'public, max-age=0'
-        });
-        res.status(200).json(results);
+        res.json(results);
       }, error => {
         res.status(400).json(error);
       });

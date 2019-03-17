@@ -39,7 +39,7 @@ const numEpisodes = [
 
 const clearSubmissions = async () => {
   console.log('Clearing submissions...');
-  await Meta.deleteMany({});
+  await Submission.deleteMany({});
 };
 
 const seedSeasons = async () => {
@@ -71,7 +71,7 @@ db.once('open', async () => {
   console.log('Connected to database');
   await seedSeasons();
   await seedMeta();
-  // await clearSubmissions();
+  await clearSubmissions();
   console.log('Done!');
   db.close();
 });

@@ -11,6 +11,7 @@ const submissionSchema = new mongoose.Schema({
   date: Number,
   subLink: String,
   mediaLink: String,
+  ingestLevel: Number
 });
 
 const Submission = mongoose.model('Submission', submissionSchema);

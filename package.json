@@ -7,8 +7,9 @@
     "start:client": "cd client && yarn start",
     "start:web": "cd server && yarn start:web",
     "run:worker": "cd server && yarn run:worker",
-    "test:server": "cd server && yarn test:web && yarn test:worker",
-    "seed": "cd server && yarn seed"
+    "update:worker": "cd server && yarn run:worker --mode=by-ingest --limit=1000 --pages=100",
+    "seed": "cd server && yarn seed",
+    "test:server": "cd server && yarn test:web && yarn test:worker"
   },
   "repository": {
     "type": "git",
