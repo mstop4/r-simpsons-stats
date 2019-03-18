@@ -428,41 +428,29 @@ describe('Submissions Library', () => {
     });
   });
 
-  describe('getOldestSubByIngest', () => {
-    it('should resolve with a status of \'ok\' with some submissions found', async () => {
-      const stubFind = sinon.stub(Submission, 'find').yields(null, [{ date: 123456 }]);
-      const result = await subLib.getOldestSubByIngest(1);
+  describe('getPastDate', () => {
+    it('should resolve with a status of \'ok\'', async () => {
+      const stubFind = sinon.stub(Meta, 'findOne').yields(null, { lastUpdated: 123456 });
+      const result = await subLib.getPastDate(456);
 
       expect(result.status).to.equal('ok');
       expect(result.message).to.equal('ok');
-      expect(result.data).to.not.equal(undefined);
-
-      stubFind.restore();
-    });
-
-    it('should resolve with a status of \'ok\' with no submissions found', async () => {
-      const stubFind = sinon.stub(Submission, 'find').yields(null, []);
-      const result = await subLib.getOldestSubByIngest(1);
-
-      expect(result.status).to.equal('ok');
-      expect(result.message).to.equal('no submissions found');
-      expect(result.data.date).to.equal(0);
+      expect(result.date).to.equal(123000);
 
       stubFind.restore();
     });
 
     it('should be rejected due to being unable to query database', async () => {
-      const stubFind = sinon.stub(Submission, 'find').yields({ error: 'yes' }, null);
+      const stubFind = sinon.stub(Meta, 'findOne').yields({ error: 'yes' }, null);
 
       try {
-        const result = await subLib.getOldestSubByIngest(1);
-        console.log(result);
+        await subLib.getPastDate(456);
       }
 
       catch (error) {
         expect(error.status).to.equal('error');
-        expect(error.message).to.equal('Could not get submission.');
-        expect(error.data).to.equal(undefined);
+        expect(error.message).to.equal('Could not get past date.');
+        expect(error.date).to.equal(0);
       }
 
       finally {

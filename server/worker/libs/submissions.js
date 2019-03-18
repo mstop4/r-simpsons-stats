@@ -321,23 +321,14 @@ const getSeasonDataFromDB = () => {
   });
 };
 
-const getOldestSubByIngest = (maxIngestLevel = 1) => {
+const getPastDate = (timeInterval) => {
   return new Promise((resolve, reject) => {
-    Submission.find({ ingestLevel: { $lte: maxIngestLevel } }, '-_id', {sort: { date: 1 }, limit: 1}, (err, result) => {
+    Meta.findOne({}, (err, result) => {
       if (err) {
         reject({
           status: 'error',
-          message: 'Could not get submission.'
-        });
-      }
-
-      else if (result.length === 0) {
-        resolve({
-          status: 'ok',
-          message: 'no submissions found',
-          data: {
-            date: 0
-          }
+          message: 'Could not get past date.',
+          date: 0
         });
       }
 
@@ -345,7 +336,7 @@ const getOldestSubByIngest = (maxIngestLevel = 1) => {
         resolve({
           status: 'ok',
           message: 'ok',
-          data: result[0]
+          date: result.lastUpdated - timeInterval
         });
       }
     });
@@ -401,7 +392,8 @@ const getSubmissions = (limit = 10, pages = 1, before, after = 0) => {
 
 module.exports = {
   checkRateLimit,
-  getOldestSubByIngest,
+  //getOldestSubByIngest,
+  getPastDate,
   getOldestSubByDate,
   getSeasonDataFromDB,
   getSubmissions

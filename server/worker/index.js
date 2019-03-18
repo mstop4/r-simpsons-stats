@@ -1,13 +1,15 @@
 const mongoose = require('mongoose');
 const argv = require('yargs').argv;
-const { getSeasonDataFromDB, checkRateLimit, getOldestSubByIngest, getOldestSubByDate, getSubmissions } = require('./libs/submissions');
+const { getSeasonDataFromDB, checkRateLimit, getPastDate, getOldestSubByDate, getSubmissions } = require('./libs/submissions');
 
-const updateByOldestIngest = (limit, pages, maxIngestLevel) => {
+const updateNewest = (limit, pages) => {
+  const timeInterval = (60 * 60) * (24 * 7 + 1); // one week + one hour
+
   return new Promise((resolve, reject) => {
-    getOldestSubByIngest(maxIngestLevel)
-      .then(sub => {
-        console.log(`Updating submissions newer than ${sub.data.date}...`);
-        getSubmissions(limit, pages, null, sub.data.date)
+    getPastDate(timeInterval)
+      .then(result => {
+        console.log(`Updating submissions newer than ${result.date - 1}...`);
+        getSubmissions(limit, pages, null, result.date - 1)
           .then(() => {
             resolve('Done!');
           }, error => {
@@ -17,12 +19,12 @@ const updateByOldestIngest = (limit, pages, maxIngestLevel) => {
   });
 };
 
-const updateByOldestDate = (limit, pages) => {
+const updateOldest = (limit, pages) => {
   return new Promise((resolve, reject) => {
     getOldestSubByDate()
       .then(sub => {
-        console.log(`Updating submissions older than ${sub.data.date}...`);
-        getSubmissions(limit, pages, sub.data.date, null)
+        console.log(`Updating submissions older than ${sub.data.date+1}...`);
+        getSubmissions(limit, pages, sub.data.date+1, null)
           .then(() => {
             resolve('Done!');
           }, error => {
@@ -66,8 +68,8 @@ db.once('open', () => {
           console.log(`Setting request delay to ${delay.message} ms`);
 
           switch (argv.mode) {
-            case 'oldest-ingest':
-              updateByOldestIngest(argv.limit, argv.pages, 1)
+            case 'newest':
+              updateNewest(argv.limit, argv.pages)
                 .then(() => {
                   console.log('Update process complete!');
                 })
@@ -80,8 +82,8 @@ db.once('open', () => {
                 });
               break;
 
-            case 'oldest-date':
-              updateByOldestDate(argv.limit, argv.pages)
+            case 'oldest':
+              updateOldest(argv.limit, argv.pages)
                 .then(() => {
                   console.log('Update process complete!');
                 })
