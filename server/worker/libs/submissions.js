@@ -251,7 +251,7 @@ const _updateDatabase = (data) => {
             logNotInTest('Done!');
             resolve({
               status: 'ok',
-              message: 'Finished updating database!',
+              message: 'Finished updating database!'
             });
           }
         });
@@ -261,7 +261,7 @@ const _updateDatabase = (data) => {
         logNotInTest('Done!');
         resolve({
           status: 'ok',
-          message: 'Finished updating database!',
+          message: 'Finished updating database!'
         });
       }
     });

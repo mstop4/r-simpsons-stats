@@ -14,9 +14,9 @@ const rawTestData = require('../../common/test/data/rawTestData');
 const seasonTestData = require('../../common/test/data/seasonData');
 
 describe('Submissions Library', () => {
-  const _processSubmissions = subLib.__get__('_processSubmissions');
 
   describe('_processSubmissions', () => {
+    const _processSubmissions = subLib.__get__('_processSubmissions');
     const templateProcessedData = {
       episodeCount: 0,
       newsCount: 0,
@@ -515,6 +515,11 @@ describe('Submissions Library', () => {
   });
 
   describe('getSubmissions', () => {
+    xit('should get submissions and update the database', async () => {
+      const _querySubreddit = sinon.stub().yields({ status: 'ok', message: 'all 5 submissions processed', data: [{ id: 12345 }]});
+      const _updateDatabase = sinon.stub().yields({ status: 'ok', message: 'Finished updating database!'});
 
+      const result = await getSubmissions(10, 1, 12345, 0);
+    });
   });
 });
