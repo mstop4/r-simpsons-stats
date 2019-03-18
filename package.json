@@ -9,7 +9,8 @@
     "run:worker": "cd server && yarn run:worker",
     "update:worker": "cd server && yarn run:worker --mode=newest --limit=1000 --pages=100",
     "seed": "cd server && yarn seed",
-    "test:server": "cd server && yarn test:web && yarn test:worker"
+    "test:server": "cd server && yarn test:web && yarn test:worker",
+    "test": "yarn test:server"
   },
   "repository": {
     "type": "git",
