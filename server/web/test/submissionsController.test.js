@@ -4,11 +4,51 @@ const expect = require('chai').expect;
 const sinon = require('sinon');
 const rewire = require('rewire');
 const Submission = require('../../common/schemas/Submission');
+const Season = require('../../common/schemas/Season');
 const Meta = require('../../common/schemas/Meta');
 const subCon = rewire('../controllers/submissionsController');
 
 const processedTestData = require('../../common/test/data/processedTestData');
 const seasonTestData = require('../../common/test/data/seasonData');
+
+describe('getSeasonDataFromDB', () => {
+
+  it('should resolve with a status of \'ok\'', async () => {
+    const stubFind = sinon.stub(Season, 'find').yields(null, { status: 'ok', message: 'ok' });
+    const result = await subCon.getSeasonDataFromDB();
+    const seasonData = subCon.__get__('seasonData');
+
+    expect(result.status).to.equal('ok');
+    expect(result.message).to.equal('ok');
+    expect(result.data).to.not.equal(undefined);
+    expect(seasonData).to.not.equal(null);
+
+    stubFind.restore();
+    subCon.__set__('seasonData', null);
+  });
+
+  it('should be rejected due to being unable to query database', async () => {
+    const stubFind = sinon.stub(Season, 'find').yields({ error: 'yes'}, null);
+    let seasonData;
+
+    try {
+      await subCon.getSeasonDataFromDB();
+    } 
+    
+    catch (error) {
+      seasonData = subCon.__get__('seasonData');
+      expect(error.status).to.equal('error');
+      expect(error.message).to.equal('Could not query database.');
+      expect(error.data).to.equal(undefined);
+      expect(seasonData).to.equal(null);
+    } 
+    
+    finally {
+      stubFind.restore();
+      subCon.__set__('seasonData', null);
+    }
+  });
+});
 
 describe('queryDatabase', () => {
   before(() => {

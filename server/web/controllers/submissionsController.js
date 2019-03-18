@@ -3,9 +3,9 @@ const Season = require('../../common/schemas/Season');
 const Meta = require('../../common/schemas/Meta');
 const { logNotInTest } = require('../../common/utils');
 
-let seasonData;
+let seasonData = null;
 
-const getMetaDataFromDB = () => {
+const getSeasonDataFromDB = () => {
   return new Promise((resolve, reject) => {
     Season.find({}, null, { sort: { number: 1 } }, (err, data) => {
       if (err) {
@@ -80,6 +80,6 @@ const queryDatabase = (query, limit, seasonStats) => {
 };
 
 module.exports = {
-  getMetaDataFromDB,
+  getSeasonDataFromDB,
   queryDatabase
 };

@@ -4,11 +4,14 @@
   "description": "",
   "main": "index.js",
   "scripts": {
+    "install:server": "cd server && yarn install",
     "start:client": "cd client && yarn start",
     "start:web": "cd server && yarn start:web",
     "run:worker": "cd server && yarn run:worker",
+    "update:worker": "cd server && yarn run:worker --mode=newest --limit=1000 --pages=100",
+    "seed": "cd server && yarn seed",
     "test:server": "cd server && yarn test:web && yarn test:worker",
-    "seed": "cd server && yarn seed"
+    "test": "yarn test:server"
   },
   "repository": {
     "type": "git",

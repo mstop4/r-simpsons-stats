@@ -6,6 +6,7 @@ const sinon = require('sinon');
 const rewire = require('rewire');
 const Submission = require('../../common/schemas/Submission');
 const Meta = require('../../common/schemas/Meta');
+const Season = require('../../common/schemas/Season');
 const subLib = rewire('../libs/submissions');
 
 const processedTestData = require('../../common/test/data/processedTestData');
@@ -13,9 +14,9 @@ const rawTestData = require('../../common/test/data/rawTestData');
 const seasonTestData = require('../../common/test/data/seasonData');
 
 describe('Submissions Library', () => {
-  const _processSubmissions = subLib.__get__('_processSubmissions');
 
   describe('_processSubmissions', () => {
+    const _processSubmissions = subLib.__get__('_processSubmissions');
     const templateProcessedData = {
       episodeCount: 0,
       newsCount: 0,
@@ -385,6 +386,128 @@ describe('Submissions Library', () => {
       finally {
         fakeRequest.restore();
       }
+    });
+  });
+
+  describe('getSeasonDataFromDB', () => {
+    it('should resolve with a status of \'ok\'', async () => {
+      const stubFind = sinon.stub(Season, 'find').yields(null, { status: 'ok', message: 'ok' });
+      
+      const result = await subLib.getSeasonDataFromDB();
+      const seasonData = subLib.__get__('seasonData');
+
+      expect(result.status).to.equal('ok');
+      expect(result.message).to.equal('ok');
+      expect(result.data).to.not.equal(undefined);
+      expect(seasonData).to.not.equal(null);
+
+      stubFind.restore();
+      subLib.__set__('seasonData', null);
+    });
+
+    it('should be rejected due to being unable to query database', async () => {
+      const stubFind = sinon.stub(Season, 'find').yields({ error: 'yes' }, null);
+      let seasonData;
+
+      try {
+        await subLib.getSeasonDataFromDB();
+      }
+
+      catch (error) {
+        seasonData = subLib.__get__('seasonData');
+        expect(error.status).to.equal('error');
+        expect(error.message).to.equal('Could not query database.');
+        expect(error.data).to.equal(undefined);
+        expect(seasonData).to.equal(null);
+      }
+
+      finally {
+        stubFind.restore();
+        subLib.__set__('seasonData', null);
+      }
+    });
+  });
+
+  describe('getPastDate', () => {
+    it('should resolve with a status of \'ok\'', async () => {
+      const stubFind = sinon.stub(Meta, 'findOne').yields(null, { lastUpdated: 123456 });
+      const result = await subLib.getPastDate(456);
+
+      expect(result.status).to.equal('ok');
+      expect(result.message).to.equal('ok');
+      expect(result.date).to.equal(123000);
+
+      stubFind.restore();
+    });
+
+    it('should be rejected due to being unable to query database', async () => {
+      const stubFind = sinon.stub(Meta, 'findOne').yields({ error: 'yes' }, null);
+
+      try {
+        await subLib.getPastDate(456);
+      }
+
+      catch (error) {
+        expect(error.status).to.equal('error');
+        expect(error.message).to.equal('Could not get past date.');
+        expect(error.date).to.equal(0);
+      }
+
+      finally {
+        stubFind.restore();
+      }
+    });
+  });
+
+  describe('getOldestSubByDate', () => {
+    it('should resolve with a status of \'ok\' with some submissions found', async () => {
+      const stubFind = sinon.stub(Submission, 'find').yields(null, [{ date: 123456 }]);
+      const result = await subLib.getOldestSubByDate();
+
+      expect(result.status).to.equal('ok');
+      expect(result.message).to.equal('ok');
+      expect(result.data).to.not.equal(undefined);
+
+      stubFind.restore();
+    });
+
+    it('should resolve with a status of \'ok\' with no submissions found', async () => {
+      const stubFind = sinon.stub(Submission, 'find').yields(null, []);
+      const result = await subLib.getOldestSubByDate();
+
+      expect(result.status).to.equal('ok');
+      expect(result.message).to.equal('no submissions found');
+      expect(result.data.date).to.equal(0);
+
+      stubFind.restore();
+    });
+
+    it('should be rejected due to being unable to query database', async () => {
+      const stubFind = sinon.stub(Submission, 'find').yields({ error: 'yes' }, null);
+
+      try {
+        const result = await subLib.getOldestSubByDate();
+        console.log(result);
+      }
+
+      catch (error) {
+        expect(error.status).to.equal('error');
+        expect(error.message).to.equal('Could not get submission.');
+        expect(error.data).to.equal(undefined);
+      }
+
+      finally {
+        stubFind.restore();
+      }
+    });
+  });
+
+  describe('getSubmissions', () => {
+    xit('should get submissions and update the database', async () => {
+      const _querySubreddit = sinon.stub().yields({ status: 'ok', message: 'all 5 submissions processed', data: [{ id: 12345 }]});
+      const _updateDatabase = sinon.stub().yields({ status: 'ok', message: 'Finished updating database!'});
+
+      const result = await getSubmissions(10, 1, 12345, 0);
     });
   });
 });
