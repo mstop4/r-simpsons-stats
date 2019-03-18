@@ -5,7 +5,6 @@ const Meta = require('../../common/schemas/Meta');
 const { logNotInTest, inlineWriteNotInTest } = require('../../common/utils');
 
 const delayBuffer = 0;
-const ingestTimeBuffer = 60 * 60;
 const oneDayinSecs = 60 * 60 * 24;
 const oneWeekinSecs = oneDayinSecs * 7;
 let defaultDelay = 250;
@@ -53,11 +52,11 @@ const _processSubmissions = (rawData, processedData) => {
         // adjust ingest level based on age of post
         const age = ((new Date()) - (new Date(sub.created_utc * 1000))) / 1000;
 
-        if (age >= oneWeekinSecs + ingestTimeBuffer) {
+        if (age >= oneWeekinSecs) {
           subDetails.ingestLevel = 2;
         }
 
-        else if (age >= oneDayinSecs + ingestTimeBuffer) {
+        else if (age >= oneDayinSecs) {
           subDetails.ingestLevel = 1;
         }
 
