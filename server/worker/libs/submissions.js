@@ -13,104 +13,6 @@ let defaultDelay = 250;
 let seasonData;
 let lastUpdated = 0;
 
-const checkRateLimit = () => {
-  logNotInTest('Checking rate limit...');
-  return new Promise((resolve, reject) => {
-    request.get('https://api.pushshift.io/meta', (error, response, body) => {
-      if (error) {
-        reject({
-          status: 'error',
-          message: 'Cannot connect to external API'
-        });
-      }
-
-      else if (response.statusCode === 404) {
-        reject({
-          status: 'error',
-          message: 'Cannot find external API resource'
-        });
-      }
-
-      else {
-        const metadata = JSON.parse(body);
-        defaultDelay = 60000 / metadata.server_ratelimit_per_minute + delayBuffer;
-        resolve({
-          status: 'ok',
-          message: defaultDelay
-        });
-      }
-    });
-  });
-};
-
-const getSeasonDataFromDB = () => {
-  return new Promise((resolve, reject) => {
-    Season.find({}, null, { sort: { number: 1 } }, (err, data) => {
-      if (err) {
-        reject({
-          status: 'error',
-          message: 'Could not query database.'
-        });
-        return;
-      }
-
-      seasonData = data;
-
-      logNotInTest(`Number of seasons: ${data.length}`);
-      resolve({
-        status: 'ok',
-        message: 'ok',
-        data: data
-      });
-    });
-  });
-};
-
-const getOldestSubByIngest = (maxIngestLevel = 1) => {
-  return new Promise((resolve, reject) => {
-    Submission.find({ ingestLevel: { $lte: maxIngestLevel } }, '-_id', {sort: { date: 1 }, limit: 1}, (err, result) => {
-      if (err) {
-        reject({
-          status: 'error',
-          message: 'Could not get submission.'
-        });
-      }
-
-      else if (result.length === 0) {
-        resolve({
-          status: 'ok',
-          message: 'no submissions found',
-          data: {
-            date: 0
-          }
-        });
-      }
-
-      else {
-        resolve({
-          status: 'ok',
-          message: 'ok',
-          data: result[0]
-        });
-      }
-    });
-  });
-};
-
-const getSubmissions = (limit = 10, pages = 1, before, after = 0) => {
-  return new Promise((resolve, reject) => {
-    _querySubreddit(limit, pages, before, after, defaultDelay)
-      .then(results => {
-        _updateDatabase(results.data)
-          .then(() => {
-            resolve(results);
-          });
-      }, error => {
-        reject(error);
-      });
-  });
-};
-
 const _processSubmissions = (rawData, processedData) => {
   // Check for invalid arguments
   if (!rawData || !processedData || !processedData.submissions) {
@@ -366,9 +268,141 @@ const _updateDatabase = (data) => {
   });
 };
 
+const checkRateLimit = () => {
+  logNotInTest('Checking rate limit...');
+  return new Promise((resolve, reject) => {
+    request.get('https://api.pushshift.io/meta', (error, response, body) => {
+      if (error) {
+        reject({
+          status: 'error',
+          message: 'Cannot connect to external API'
+        });
+      }
+
+      else if (response.statusCode === 404) {
+        reject({
+          status: 'error',
+          message: 'Cannot find external API resource'
+        });
+      }
+
+      else {
+        const metadata = JSON.parse(body);
+        defaultDelay = 60000 / metadata.server_ratelimit_per_minute + delayBuffer;
+        resolve({
+          status: 'ok',
+          message: defaultDelay
+        });
+      }
+    });
+  });
+};
+
+const getSeasonDataFromDB = () => {
+  return new Promise((resolve, reject) => {
+    Season.find({}, null, { sort: { number: 1 } }, (err, data) => {
+      if (err) {
+        reject({
+          status: 'error',
+          message: 'Could not query database.'
+        });
+        return;
+      }
+
+      seasonData = data;
+
+      logNotInTest(`Number of seasons: ${data.length}`);
+      resolve({
+        status: 'ok',
+        message: 'ok',
+        data: data
+      });
+    });
+  });
+};
+
+const getOldestSubByIngest = (maxIngestLevel = 1) => {
+  return new Promise((resolve, reject) => {
+    Submission.find({ ingestLevel: { $lte: maxIngestLevel } }, '-_id', {sort: { date: 1 }, limit: 1}, (err, result) => {
+      if (err) {
+        reject({
+          status: 'error',
+          message: 'Could not get submission.'
+        });
+      }
+
+      else if (result.length === 0) {
+        resolve({
+          status: 'ok',
+          message: 'no submissions found',
+          data: {
+            date: 0
+          }
+        });
+      }
+
+      else {
+        resolve({
+          status: 'ok',
+          message: 'ok',
+          data: result[0]
+        });
+      }
+    });
+  });
+};
+
+const getOldestSubByDate = () => {
+  return new Promise((resolve, reject) => {
+    Submission.find({}, '-_id', { sort: { date: 1 }, limit: 1 }, (err, result) => {
+      if (err) {
+        reject({
+          status: 'error',
+          message: 'Could not get submission.'
+        });
+      }
+
+      else if (result.length === 0) {
+        resolve({
+          status: 'ok',
+          message: 'no submissions found',
+          data: {
+            date: 0
+          }
+        });
+      }
+
+      else {
+        resolve({
+          status: 'ok',
+          message: 'ok',
+          data: result[0]
+        });
+      }
+    });
+  });
+};
+
+const getSubmissions = (limit = 10, pages = 1, before, after = 0) => {
+  return new Promise((resolve, reject) => {
+    _querySubreddit(limit, pages, before, after, defaultDelay)
+      .then(results => {
+        _updateDatabase(results.data)
+          .then(() => {
+            resolve(results);
+          });
+      }, error => {
+        reject(error);
+      });
+  });
+};
+
+
+
 module.exports = {
   checkRateLimit,
   getOldestSubByIngest,
+  getOldestSubByDate,
   getSeasonDataFromDB,
   getSubmissions
 };

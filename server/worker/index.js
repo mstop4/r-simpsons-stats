@@ -1,14 +1,28 @@
 const mongoose = require('mongoose');
 const argv = require('yargs').argv;
-const { getSeasonDataFromDB, checkRateLimit, getOldestSubByIngest, getSubmissions } = require('./libs/submissions');
+const { getSeasonDataFromDB, checkRateLimit, getOldestSubByIngest, getOldestSubByDate, getSubmissions } = require('./libs/submissions');
 
-const updateByIngest = (limit, pages, maxIngestLevel) => {
+const updateByOldestIngest = (limit, pages, maxIngestLevel) => {
   return new Promise((resolve, reject) => {
-    console.log('Updating submissions...');
-
     getOldestSubByIngest(maxIngestLevel)
       .then(sub => {
-        getSubmissions(limit, pages, null, sub.date)
+        console.log(`Updating submissions newer than ${sub.data.date}...`);
+        getSubmissions(limit, pages, null, sub.data.date)
+          .then(() => {
+            resolve('Done!');
+          }, error => {
+            reject(`Error: ${error.message}`);
+          });
+      });
+  });
+};
+
+const updateByOldestDate = (limit, pages) => {
+  return new Promise((resolve, reject) => {
+    getOldestSubByDate()
+      .then(sub => {
+        console.log(`Updating submissions older than ${sub.data.date}...`);
+        getSubmissions(limit, pages, sub.data.date, null)
           .then(() => {
             resolve('Done!');
           }, error => {
@@ -52,8 +66,22 @@ db.once('open', () => {
           console.log(`Setting request delay to ${delay.message} ms`);
 
           switch (argv.mode) {
-            case 'by-ingest':
-              updateByIngest(argv.limit, argv.pages, 1)
+            case 'oldest-ingest':
+              updateByOldestIngest(argv.limit, argv.pages, 1)
+                .then(() => {
+                  console.log('Update process complete!');
+                })
+                .catch(error => {
+                  console.log(`Error: ${error}`);
+                })
+                .finally(() => {
+                  console.log('Work finished. Goodbye!');
+                  db.close();
+                });
+              break;
+
+            case 'oldest-date':
+              updateByOldestDate(argv.limit, argv.pages)
                 .then(() => {
                   console.log('Update process complete!');
                 })
