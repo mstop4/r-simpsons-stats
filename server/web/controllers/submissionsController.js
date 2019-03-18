@@ -3,7 +3,7 @@ const Season = require('../../common/schemas/Season');
 const Meta = require('../../common/schemas/Meta');
 const { logNotInTest } = require('../../common/utils');
 
-let seasonData;
+let seasonData = null;
 
 const getSeasonDataFromDB = () => {
   return new Promise((resolve, reject) => {

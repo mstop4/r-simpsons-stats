@@ -10,7 +10,7 @@ const oneDayinSecs = 60 * 60 * 24;
 const oneWeekinSecs = oneDayinSecs * 7;
 let defaultDelay = 250;
 
-let seasonData;
+let seasonData = null;
 let lastUpdated = 0;
 
 const _processSubmissions = (rawData, processedData) => {
