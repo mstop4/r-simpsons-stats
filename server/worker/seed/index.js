@@ -34,7 +34,7 @@ const numEpisodes = [
   22,
   22,
   21,
-  19
+  20
 ];
 
 const clearSubmissions = async () => {
@@ -70,8 +70,8 @@ db.on('error', () => console.log('Could not connect to database'));
 db.once('open', async () => {
   console.log('Connected to database');
   await seedSeasons();
-  await seedMeta();
-  await clearSubmissions();
+  //await seedMeta();
+  //await clearSubmissions();
   console.log('Done!');
   db.close();
 });
