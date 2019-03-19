@@ -1,5 +1,6 @@
 import React, { Component } from 'react';
 import Chart from 'chart.js';
+import ChartHeader from './ChartHeader';
 import SeasonDetails from './SeasonDetails';
 import SeasonSelector from './SeasonSelector';
 import '../styles/BarChart.css';
@@ -11,6 +12,7 @@ class BarChart extends Component {
       seasonData: [],
       completeData: [],
       chartData: [],
+      chartTotal: 0,
       showChart: false,
       seasonDetails: false,
       seasonNum: 1,
@@ -20,21 +22,33 @@ class BarChart extends Component {
     this.myChart = null;
   }
 
-  toggleSeasonDetails = (event) => {
+  updateChartData = (detailView, dataset, seasonNum) => {
     let newChartData;
 
-    if (event.target.checked) {
-      newChartData = this.state.completeData[this.state.seasonNum-1];
+    if (detailView) {
+      newChartData = dataset[seasonNum];
     }
 
     else {
-      newChartData = this.state.completeData.map(season => {
+      newChartData = dataset.map(season => {
         return season.reduce((sum, num) => sum + num);
       });
     }
 
-    this.setState({
+    const chartTotal = newChartData.reduce((sum, num) => sum + num);
+
+    return {
       chartData: newChartData,
+      chartTotal: chartTotal
+    };
+  }
+
+  toggleSeasonDetails = (event) => {
+    const newData = this.updateChartData(event.target.checked, this.state.completeData, this.state.seasonNum);
+
+    this.setState({
+      chartData: newData.chartData,
+      chartTotal: newData.chartTotal,
       seasonDetails: event.target.checked
     });
   }
@@ -62,8 +76,6 @@ class BarChart extends Component {
     if (!this.state.seasonDetails) {
       let seasonClicked = null;
 
-      ///console.log(this.myChart.scales['x-axis-0']);
-
       if (elems && elems.length > 0) {
         seasonClicked = elems[0]._index;
       }
@@ -81,10 +93,11 @@ class BarChart extends Component {
       }
       
       if (seasonClicked !== null) {
-        const newChartData = this.state.completeData[seasonClicked];
+        const newData = this.updateChartData(true, this.state.completeData, seasonClicked);
 
         this.setState({
-          chartData: newChartData,
+          chartData: newData.chartData,
+          chartTotal: newData.chartTotal,
           seasonNum: seasonClicked+1,
           seasonDetails: true
         });
@@ -134,22 +147,13 @@ class BarChart extends Component {
             .then(seasonStats => {
         
               if (seasonStats.status === 'ok') {
-                let newChartData;
-
-                if (this.state.seasonDetails) {
-                  newChartData = seasonStats.data[this.state.seasonNum-1];
-                }
-
-                else {
-                  newChartData = seasonStats.data.map(season => {
-                    return season.reduce((sum, num) => sum + num);
-                  });
-                }
+                const newData = this.updateChartData(this.state.seasonDetails, seasonStats.data, 0);
 
                 this.setState({
                   seasonData: seasonData.data,
                   completeData: seasonStats.data,
-                  chartData: newChartData,
+                  chartData: newData.chartData,
+                  chartTotal: newData.chartTotal,
                   showChart: true,
                   lastUpdated: seasonStats.lastUpdated
                 });
@@ -178,7 +182,7 @@ class BarChart extends Component {
 
     return (
       <div>
-        {this.state.showChart ? <p>Last updated: {dateString}</p> : <p>Fetching data...</p>}
+        <ChartHeader show={this.state.showChart} dateString={dateString} chartTotal={this.state.chartTotal}/>
         <div id="chartWrapper" className={chartClass}>
           <canvas id="myChart" width="400" height="400"></canvas>
         </div>
