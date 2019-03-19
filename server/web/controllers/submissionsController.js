@@ -50,7 +50,13 @@ const queryDatabase = (query, limit, seasonStats) => {
         if (seasonStats) {
           const stats = [];
           for (let i = 0; i < seasonData.length; i++) {
-            stats.push([]);
+            const season = [];
+
+            for (let j = 0; j < seasonData[i].numEpisodes; j++) {
+              season.push(0);
+            }
+
+            stats.push(season);
           }
   
           subs.forEach(sub => {
