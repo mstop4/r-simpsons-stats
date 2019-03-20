@@ -94,26 +94,23 @@ const queryDatabase = (query, limit, subCounts) => {
 
                 // try to update submission counts in store
                 store.setKey('submissionCounts', JSON.stringify(result))
-                  .then(() => {})
-                  .catch(() => {
-                    console.log('Warning: could not update submission counts in store');
-                  })
-                  .finally(() => {
-
-                    //try to update last updated date in store
-                    store.setKey('lastUpdated', meta.lastUpdated)
-                      .then(() => { })
-                      .catch(() => {
-                        console.log('Warning: could not update last updated date in store');
-                      })
-                      .finally(() => {
-                        resolve({
-                          status: 'ok',
-                          message: 'submission counts only',
-                          lastUpdated: meta.lastUpdated,
-                          data: result
-                        });
-                      });
+                  .then(null
+                    , () => {
+                      console.log('Warning: could not update submission counts in store');
+                    })
+                  // try to update last updated date in store
+                  .then(store.setKey('lastUpdated', meta.lastUpdated))
+                  .then(null
+                    , () => {
+                      console.log('Warning: could not update last updated date in store');
+                    })
+                  .then(() => {
+                    resolve({
+                      status: 'ok',
+                      message: 'submission counts only',
+                      lastUpdated: meta.lastUpdated,
+                      data: result
+                    });
                   });
               }
 
