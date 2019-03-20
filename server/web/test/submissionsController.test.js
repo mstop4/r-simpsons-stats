@@ -74,6 +74,7 @@ describe('queryDatabase', () => {
   after(() => {
     subCon.__set__('seasonData', null);
     subCon = rewire('../controllers/submissionsController');
+    stubMeta.restore();
   });
 
   afterEach(() => {
