@@ -391,7 +391,6 @@ const getSubmissions = (limit = 10, pages = 1, before, after = 0) => {
 
 module.exports = {
   checkRateLimit,
-  //getOldestSubByIngest,
   getPastDate,
   getOldestSubByDate,
   getSeasonDataFromDB,
