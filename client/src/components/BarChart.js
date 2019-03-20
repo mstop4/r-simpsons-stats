@@ -133,6 +133,27 @@ class BarChart extends Component {
               beginAtZero: true
             }
           }]
+        },
+        tooltips: {
+          callbacks: {
+            title: (tooltipItem, data) => {
+              if (this.state.seasonDetails) {
+                return `Season ${this.state.seasonNum}\nEpisode ${data['labels'][tooltipItem[0].index]}`;
+              }
+              else {
+                return `Season ${data['labels'][tooltipItem[0].index]}`;
+              }
+            },
+            label: (tooltipItem, data) => {
+              return `${data.datasets[0].data[tooltipItem.index]} submissions`;
+            }
+          },
+          backgroundColor: '#DDD',
+          titleFontSize: 16,
+          titleFontColor: '#0066ff',
+          bodyFontColor: '#000',
+          bodyFontSize: 14,
+          displayColors: false
         }
       }
     });
