@@ -112,7 +112,6 @@ const queryDatabase = (query, limit, subCounts) => {
       // get last updated date from store
       store.getKey('lastUpdated')
         .then((date) => {
-
           if (date < meta.lastUpdated) {
             // data in DB is newer
 
@@ -162,6 +161,30 @@ const queryDatabase = (query, limit, subCounts) => {
                   message: 'Could not query store'
                 }));
             }
+          }
+        }, () => {
+          // can't get last updated date from store, continue using DB
+
+          if (!subCounts) {
+            _getSubmissionsFromDB(query, limit, subCounts, meta.lastUpdated)
+              .then(result => {
+                resolve({
+                  status: 'ok',
+                  message: result.message,
+                  lastUpdated: meta.lastUpdated,
+                  data: result.data
+                });
+              }, () => reject({
+                status: 'error',
+                message: 'Could not query database'
+              }));
+          }
+
+          else {
+            reject({
+              status: 'ok',
+              message: 'Could not query store',
+            });
           }
         });
     });
