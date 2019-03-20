@@ -78,7 +78,7 @@ const queryDatabase = (query, limit, subCounts) => {
       }
 
       // get last updated date from store
-      store.getUpdateDate()
+      store.getKey('lastUpdated')
         .then((date) => {
           if (date < meta.lastUpdated) {
             console.log('DB is newer');
@@ -91,18 +91,29 @@ const queryDatabase = (query, limit, subCounts) => {
           _getSubmissionsFromDB(query, limit, subCounts)
             .then(result => {
               if (subCounts) {
-                store.setUpdateDate(meta.lastUpdated)
+
+                // try to update submission counts in store
+                store.setKey('submissionCounts', JSON.stringify(result))
                   .then(() => {})
                   .catch(() => {
-                    console.log('Warning: could not update last updated date');
+                    console.log('Warning: could not update submission counts in store');
                   })
                   .finally(() => {
-                    resolve({
-                      status: 'ok',
-                      message: 'submission counts only',
-                      lastUpdated: meta.lastUpdated,
-                      data: result
-                    });
+
+                    //try to update last updated date in store
+                    store.setKey('lastUpdated', meta.lastUpdated)
+                      .then(() => { })
+                      .catch(() => {
+                        console.log('Warning: could not update last updated date in store');
+                      })
+                      .finally(() => {
+                        resolve({
+                          status: 'ok',
+                          message: 'submission counts only',
+                          lastUpdated: meta.lastUpdated,
+                          data: result
+                        });
+                      });
                   });
               }
 

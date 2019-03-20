@@ -13,11 +13,11 @@ const init = () => {
 
 const getClient = () => client;
 
-const getUpdateDate = () => {
+const getKey = (key) => {
   return new Promise((resolve, reject) => {
-    client.get('lastUpdated', (err, result) => {
+    client.get(key, (err, result) => {
       if (err) {
-        console.log('Could not get lastUpdated from store');
+        console.log(`Could not get ${key} from store`);
         reject(false);
       }
   
@@ -32,9 +32,9 @@ const getUpdateDate = () => {
   });
 };
 
-const setUpdateDate = (date) => {
+const setKey = (key, value) => {
   return new Promise((resolve, reject) => {
-    client.set('lastUpdated', date, (err, result) => {
+    client.set(key, value, (err, result) => {
       if (err) {
         reject();
         return;
@@ -48,6 +48,6 @@ const setUpdateDate = (date) => {
 module.exports = {
   init,
   getClient,
-  getUpdateDate,
-  setUpdateDate
+  getKey,
+  setKey
 };
