@@ -29,7 +29,7 @@ const getSeasonDataFromDB = () => {
   });
 };
 
-const _getSubmissionsFromDB = (query, limit, subCounts) => {
+const _getSubmissionsFromDB = (query, limit, subCounts, lastUpdated) => {
   return new Promise((resolve, reject) => {
     Submission.find(query, '-_id -__v', { limit: limit }, (err, subs) => {
       if (err) {
@@ -56,13 +56,45 @@ const _getSubmissionsFromDB = (query, limit, subCounts) => {
           }
         });
 
-        resolve(stats);
+        // try to update submission counts in store
+        store.setKey('submissionCounts', JSON.stringify(stats))
+          .then(null
+            , () => {
+              console.log('Warning: could not update submission counts in store');
+            })
+          // try to update last updated date in store
+          .then(store.setKey('lastUpdated', lastUpdated))
+          .then(null
+            , () => {
+              console.log('Warning: could not update last updated date in store');
+            })
+          .then(() => {
+            resolve({
+              message: 'submission counts only',
+              data: stats
+            });
+          });
       }
 
-      resolve(subs);
+      else {
+        resolve({
+          message: 'ok',
+          data: subs
+        });
+      }
     });
   });
+};
 
+const _getSubmissionCountsFromStore = () => {
+  return new Promise((resolve, reject) => {
+    store.getKey('submissionCounts')
+      .then(stats => {
+        resolve(stats);
+      }, () => {
+        reject();
+      });
+  });
 };
 
 const queryDatabase = (query, limit, subCounts) => {
@@ -80,53 +112,57 @@ const queryDatabase = (query, limit, subCounts) => {
       // get last updated date from store
       store.getKey('lastUpdated')
         .then((date) => {
+
           if (date < meta.lastUpdated) {
-            console.log('DB is newer');
+            // data in DB is newer
+
+            _getSubmissionsFromDB(query, limit, subCounts, meta.lastUpdated)
+              .then(result => {
+                resolve({
+                  status: 'ok',
+                  message: result.message,
+                  lastUpdated: meta.lastUpdated,
+                  data: result.data
+                });
+              }, () => reject({
+                status: 'error',
+                message: 'Could not query database'
+              }));
           }
 
           else {
-            console.log('Store is up-to-date');
-          }
+            // data in store is up-to-date
 
-          _getSubmissionsFromDB(query, limit, subCounts)
-            .then(result => {
-              if (subCounts) {
-
-                // try to update submission counts in store
-                store.setKey('submissionCounts', JSON.stringify(result))
-                  .then(null
-                    , () => {
-                      console.log('Warning: could not update submission counts in store');
-                    })
-                  // try to update last updated date in store
-                  .then(store.setKey('lastUpdated', meta.lastUpdated))
-                  .then(null
-                    , () => {
-                      console.log('Warning: could not update last updated date in store');
-                    })
-                  .then(() => {
-                    resolve({
-                      status: 'ok',
-                      message: 'submission counts only',
-                      lastUpdated: meta.lastUpdated,
-                      data: result
-                    });
+            if (!subCounts) {
+              _getSubmissionsFromDB(query, limit, false, meta.lastUpdated)
+                .then(result => {
+                  resolve({
+                    status: 'ok',
+                    message: result.message,
+                    lastUpdated: meta.lastUpdated,
+                    data: result.data
                   });
-              }
+                }, () => reject({
+                  status: 'error',
+                  message: 'Could not query database'
+                }));
+            }
 
-              else {
-                resolve({
-                  status: 'ok',
-                  message: 'ok',
-                  lastUpdated: meta.lastUpdated,
-                  data: result
-                });
-              }
-            })
-            .catch(() => reject({
-              status: 'error',
-              message: 'Could not query database.'
-            }));
+            else {
+              _getSubmissionCountsFromStore()
+                .then(result => {
+                  resolve({
+                    status: 'ok',
+                    message: 'submission counts only',
+                    lastUpdated: meta.lastUpdated,
+                    data: JSON.parse(result)
+                  });
+                }, () => reject({
+                  status: 'error',
+                  message: 'Could not query store'
+                }));
+            }
+          }
         });
     });
   });
