@@ -1,3 +1,4 @@
+const store = require('../store');
 const Submission = require('../../common/schemas/Submission');
 const Season = require('../../common/schemas/Season');
 const Meta = require('../../common/schemas/Meta');
@@ -28,8 +29,45 @@ const getSeasonDataFromDB = () => {
   });
 };
 
-const queryDatabase = (query, limit, seasonStats) => {
+const _getSubmissionsFromDB = (query, limit, subCounts) => {
   return new Promise((resolve, reject) => {
+    Submission.find(query, '-_id -__v', { limit: limit }, (err, subs) => {
+      if (err) {
+        reject();
+        return;
+      }
+
+      if (subCounts) {
+        const stats = [];
+        for (let i = 0; i < seasonData.length; i++) {
+          const season = [];
+
+          for (let j = 0; j < seasonData[i].numEpisodes; j++) {
+            season.push(0);
+          }
+
+          stats.push(season);
+        }
+
+        subs.forEach(sub => {
+          if (sub.season > 0 && sub.season <= seasonData.length &&
+            sub.episode > 0 && sub.episode <= seasonData[sub.season - 1].numEpisodes) {
+            stats[sub.season - 1][sub.episode - 1] = stats[sub.season - 1][sub.episode - 1] + 1 || 1;
+          }
+        });
+
+        resolve(stats);
+      }
+
+      resolve(subs);
+    });
+  });
+
+};
+
+const queryDatabase = (query, limit, subCounts) => {
+  return new Promise((resolve, reject) => {
+    // get last updated date from db
     Meta.findOne({}, '-_id -__v', (err, meta) => {
       if (err) {
         reject({
@@ -39,48 +77,49 @@ const queryDatabase = (query, limit, seasonStats) => {
         return;
       }
 
-      Submission.find(query, '-_id -__v', { limit: limit }, (err, subs) => {
-        if (err) {
-          reject({
-            status: 'error',
-            message: 'Could not query database.'
-          });
-        }
-  
-        if (seasonStats) {
-          const stats = [];
-          for (let i = 0; i < seasonData.length; i++) {
-            const season = [];
-
-            for (let j = 0; j < seasonData[i].numEpisodes; j++) {
-              season.push(0);
-            }
-
-            stats.push(season);
+      // get last updated date from store
+      store.getUpdateDate()
+        .then((date) => {
+          if (date < meta.lastUpdated) {
+            console.log('DB is newer');
           }
-  
-          subs.forEach(sub => {
-            if (sub.season > 0 && sub.season <= seasonData.length &&
-              sub.episode > 0 && sub.episode <= seasonData[sub.season - 1].numEpisodes) {
-              stats[sub.season - 1][sub.episode - 1] = stats[sub.season - 1][sub.episode - 1] + 1 || 1;
-            }
-          });
-  
-          resolve({
-            status: 'ok',
-            message: 'season stats only',
-            lastUpdated: meta.lastUpdated,
-            data: stats
-          });
-        }
-  
-        resolve({
-          status: 'ok',
-          message: 'ok',
-          lastUpdated: meta.lastUpdated,
-          data: subs
+
+          else {
+            console.log('Store is up-to-date');
+          }
+
+          _getSubmissionsFromDB(query, limit, subCounts)
+            .then(result => {
+              if (subCounts) {
+                store.setUpdateDate(meta.lastUpdated)
+                  .then(() => {})
+                  .catch(() => {
+                    console.log('Warning: could not update last updated date');
+                  })
+                  .finally(() => {
+                    resolve({
+                      status: 'ok',
+                      message: 'submission counts only',
+                      lastUpdated: meta.lastUpdated,
+                      data: result
+                    });
+                  });
+              }
+
+              else {
+                resolve({
+                  status: 'ok',
+                  message: 'ok',
+                  lastUpdated: meta.lastUpdated,
+                  data: result
+                });
+              }
+            })
+            .catch(() => reject({
+              status: 'error',
+              message: 'Could not query database.'
+            }));
         });
-      });
     });
   });
 };
