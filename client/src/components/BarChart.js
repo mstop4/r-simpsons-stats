@@ -2,7 +2,7 @@ import React, { Component } from 'react';
 import Chart from 'chart.js';
 import ChartHeader from './ChartHeader';
 import SeasonDetails from './SeasonDetails';
-import SeasonSelector from './SeasonSelector';
+import { intRandomRange, shuffle } from '../helpers';
 import '../styles/BarChart.css';
 
 class BarChart extends Component {
@@ -10,7 +10,8 @@ class BarChart extends Component {
     super(props);
     this.state = {
       seasonData: [],
-      completeData: [],
+      countData: [],
+      episodeData: [],
       chartData: [],
       chartTotal: 0,
       showChart: false,
@@ -20,6 +21,8 @@ class BarChart extends Component {
     };
 
     this.myChart = null;
+    this.chartContainerRef = React.createRef();
+    this.submissionSequence = [];
   }
 
   updateChartData = (detailView, dataset, seasonNum) => {
@@ -44,7 +47,8 @@ class BarChart extends Component {
   }
 
   toggleSeasonDetails = (event) => {
-    const newData = this.updateChartData(event.target.checked, this.state.completeData, this.state.seasonNum);
+    const newData = this.updateChartData(event.target.checked, this.state.countData, this.state.seasonNum);
+    this.updateBackground(false, null, null, null);
 
     this.setState({
       chartData: newData.chartData,
@@ -53,22 +57,49 @@ class BarChart extends Component {
     });
   }
 
-  handleSeasonSelection = (event) => {
-    const num = parseInt(event.target.value);
+  addEpisodeSubmissions = (data, season, episode) => {
+    const newState = [...this.state.episodeData];
 
-    if (this.state.seasonDetails) {
-      const newChartData = this.state.completeData[num-1];
+    if (!newState[season]) {
+      newState[season] = [];
+    }
+    
+    newState[season][episode] = data;
+    return newState;
+  }
 
-      this.setState({
-        chartData: newChartData,
-        seasonNum: num
-      });
+  initSubmissionSequence = (season, episode, numSubmissions) => {
+    for (let i = 0; i < numSubmissions; i++) {
+      this.submissionSequence[season][episode][i] = i;
+    }
+
+    this.submissionSequence[season][episode] = shuffle(this.submissionSequence[season][episode]);
+  }
+
+  updateBackground = (on, season, episode, submissions) => {
+    if (on) {
+      const isImage = /\.(jpeg|jpg|gif|png)$/;
+
+      while (this.submissionSequence[season][episode].length > 0) {
+        const i = this.submissionSequence[season][episode].pop();
+        const curSubmission = submissions[season][episode][i];
+
+        if (curSubmission.mediaLink && isImage.test(curSubmission.mediaLink)) {
+          this.chartContainerRef.current.style.backgroundImage = `linear-gradient(#ffffffc0, #ffffffc0), url(${curSubmission.mediaLink})`;
+          console.log(curSubmission.mediaLink);
+          break;
+        }
+      }
+
+      console.log(this.submissionSequence[season][episode].length);
+
+      if (this.submissionSequence[season][episode].length === 0) {
+        this.initSubmissionSequence(season, episode, this.seasonData[season].numEpisodes);
+      }
     }
 
     else {
-      this.setState({
-        seasonNum: num
-      });
+      this.chartContainerRef.current.style.backgroundImage = '';
     }
   }
 
@@ -93,21 +124,52 @@ class BarChart extends Component {
       }
       
       if (seasonClicked !== null) {
-        const newData = this.updateChartData(true, this.state.completeData, seasonClicked);
+        const newData = this.updateChartData(true, this.state.countData, seasonClicked);
+        const randomEpisode = intRandomRange(0, this.state.seasonData[seasonClicked].numEpisodes-1);
 
-        this.setState({
-          chartData: newData.chartData,
-          chartTotal: newData.chartTotal,
-          seasonNum: seasonClicked+1,
-          seasonDetails: true
-        });
+        console.log(seasonClicked, randomEpisode);
+        if (this.state.episodeData[seasonClicked] && this.state.episodeData[seasonClicked][randomEpisode]) {
+          console.log('has data');
+          this.updateBackground(true, seasonClicked, randomEpisode, this.state.episodeData);
+
+          this.setState({
+            chartData: newData.chartData,
+            chartTotal: newData.chartTotal,
+            seasonNum: seasonClicked+1,
+            seasonDetails: true
+          });
+        }
+
+        else {
+          console.log('has no data');
+          fetch(`/submissions?season=${seasonClicked+1}&episode=${randomEpisode+1}seasonstats=false`)
+          .then(res => res.json())
+          .then(seasonData => {
+            const newEpisodeData = this.addEpisodeSubmissions(seasonData.data, seasonClicked, randomEpisode);
+            this.initSubmissionSequence(seasonClicked, randomEpisode, seasonData.data.length);
+
+            this.updateBackground(true, seasonClicked, randomEpisode, newEpisodeData);
+
+            this.setState({
+              episodeData: newEpisodeData,
+              chartData: newData.chartData,
+              chartTotal: newData.chartTotal,
+              seasonNum: seasonClicked+1,
+              seasonDetails: true
+            });
+          });
+        }
+      }
+
+      else {
+        this.updateBackground(false, null, null, null);
       }
     }
   }
 
   componentDidMount = () => {
     const seasonLabels = [];
-    for (let i = 0; i < 30; i++) {
+    for (let i = 0; i < 1; i++) {
       seasonLabels[i] = (i+1).toString();
     }
  
@@ -170,9 +232,19 @@ class BarChart extends Component {
               if (seasonStats.status === 'ok') {
                 const newData = this.updateChartData(this.state.seasonDetails, seasonStats.data, 0);
 
+                for (let i = 0; i < seasonData.data.length; i++) {
+                  const episodeSubmissions = [];
+
+                  for (let j = 0; j < seasonData.data[i].numEpisodes; j++) {
+                    episodeSubmissions.push([]);
+                  }
+
+                  this.submissionSequence.push(episodeSubmissions);
+                }
+
                 this.setState({
                   seasonData: seasonData.data,
-                  completeData: seasonStats.data,
+                  countData: seasonStats.data,
                   chartData: newData.chartData,
                   chartTotal: newData.chartTotal,
                   showChart: true,
@@ -202,21 +274,17 @@ class BarChart extends Component {
     const dateString = new Date(this.state.lastUpdated * 1000).toLocaleString();
 
     return (
-      <div>
+      <div id="bar-chart" ref={this.chartContainerRef}>
         <ChartHeader show={this.state.showChart} dateString={dateString} chartTotal={this.state.chartTotal}/>
+
         <div id="chartWrapper" className={chartClass}>
           <canvas id="myChart" width="400" height="400"></canvas>
         </div>
+
         <SeasonDetails 
           checked={this.state.seasonDetails}
           handleChange={this.toggleSeasonDetails}
         />
-        <SeasonSelector
-          maxSeason={this.state.seasonData.length}
-          curSeason={this.state.seasonNum}
-          handleChange={this.handleSeasonSelection}
-        />
-
       </div>
     );
   }

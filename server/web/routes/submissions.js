@@ -16,8 +16,12 @@ router.get('/', (req, res) => {
     const query = {};
     const seasonStats = req.query.seasonstats ? req.query.seasonstats.toLowerCase() === 'true' : false;
 
-    if (req.query.season !== '0') {
+    if (req.query.season && req.query.season !== '0') {
       query.season = parseInt(req.query.season);
+    }
+
+    if (req.query.episode && req.query.episode !== '0') {
+      query.episode = parseInt(req.query.episode);
     }
 
     queryDatabase(query, parseInt(req.query.limit), seasonStats)
