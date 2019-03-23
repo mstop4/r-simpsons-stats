@@ -77,33 +77,37 @@ class BarChart extends Component {
   }
 
   updateBackground = (on, season, episode, submissions) => {
-    if (on) {
-      const isImage = /\.(jpeg|jpg|gif|png)$/;
-
-      while (this.submissionSequence[season][episode].length > 0) {
-        const i = this.submissionSequence[season][episode].pop();
-        const curSubmission = submissions[season][episode][i];
-
-        if (curSubmission.mediaLink && isImage.test(curSubmission.mediaLink)) {
-          this.chartContainerRef.current.style.backgroundImage = `linear-gradient(#ffffffc0, #ffffffc0), url(${curSubmission.mediaLink})`;
-          console.log(curSubmission.mediaLink);
-          break;
+    return new Promise((resolve, reject) => {
+      if (on) {
+        // TODO: use HEAD request to verify if URL is an image
+        const isImage = /\.(jpeg|jpg|gif|png)$/;
+  
+        while (this.submissionSequence[season][episode].length > 0) {
+          const i = this.submissionSequence[season][episode].pop();
+          const curSubmission = submissions[season][episode][i];
+  
+          if (curSubmission.mediaLink && isImage.test(curSubmission.mediaLink)) {
+            this.chartContainerRef.current.style.backgroundImage = `linear-gradient(#ffffffc0, #ffffffc0), url(${curSubmission.mediaLink})`;
+            break;
+          }
         }
+  
+        if (this.submissionSequence[season][episode].length === 0) {
+          this.initSubmissionSequence(season, episode, this.seasonData[season].numEpisodes);
+        }
+        
+        resolve();
       }
-
-      console.log(this.submissionSequence[season][episode].length);
-
-      if (this.submissionSequence[season][episode].length === 0) {
-        this.initSubmissionSequence(season, episode, this.seasonData[season].numEpisodes);
+  
+      else {
+        this.chartContainerRef.current.style.backgroundImage = '';
+        resolve();
       }
-    }
-
-    else {
-      this.chartContainerRef.current.style.backgroundImage = '';
-    }
+    });
   }
 
   chartClick = (event, elems) => {
+    // TODO: make this async
     if (!this.state.seasonDetails) {
       let seasonClicked = null;
 
@@ -128,6 +132,7 @@ class BarChart extends Component {
         const randomEpisode = intRandomRange(0, this.state.seasonData[seasonClicked].numEpisodes-1);
 
         console.log(seasonClicked, randomEpisode);
+
         if (this.state.episodeData[seasonClicked] && this.state.episodeData[seasonClicked][randomEpisode]) {
           console.log('has data');
           this.updateBackground(true, seasonClicked, randomEpisode, this.state.episodeData);
@@ -147,7 +152,6 @@ class BarChart extends Component {
           .then(seasonData => {
             const newEpisodeData = this.addEpisodeSubmissions(seasonData.data, seasonClicked, randomEpisode);
             this.initSubmissionSequence(seasonClicked, randomEpisode, seasonData.data.length);
-
             this.updateBackground(true, seasonClicked, randomEpisode, newEpisodeData);
 
             this.setState({
