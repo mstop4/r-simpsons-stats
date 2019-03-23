@@ -56,17 +56,16 @@ const _getSubmissionsFromDB = (query, limit, subCounts, lastUpdated) => {
           }
         });
 
+        const newSubCounts = {
+          lastUpdated: lastUpdated,
+          data: stats
+        };
+
         // try to update submission counts in store
-        store.setKey('submissionCounts', JSON.stringify(stats))
+        store.setKey('submissionCounts', JSON.stringify(newSubCounts))
           .then(null
             , () => {
               console.log('Warning: could not update submission counts in store');
-            })
-          // try to update last updated date in store
-          .then(store.setKey('lastUpdated', lastUpdated))
-          .then(null
-            , () => {
-              console.log('Warning: could not update last updated date in store');
             })
           .then(() => {
             resolve({
@@ -77,23 +76,51 @@ const _getSubmissionsFromDB = (query, limit, subCounts, lastUpdated) => {
       }
 
       else {
-        resolve({
-          message: 'ok',
+        const newSubs = {
+          lastUpdated: lastUpdated,
           data: subs
-        });
+        };
+
+        // try to update submission counts in store
+        store.setHash(`season${query.season}`, JSON.stringify(newSubs))
+          .then(null
+            , () => {
+              console.log('Warning: could not update submissions in store');
+            })
+          .then(() => {
+            resolve({
+              message: 'ok',
+              data: subs
+            });
+          });
       }
     });
   });
 };
 
-const _getSubmissionCountsFromStore = () => {
+const _getSubmissionsFromStore = (season) => {
   return new Promise((resolve, reject) => {
-    store.getKey('submissionCounts')
-      .then(stats => {
-        resolve(stats);
-      }, () => {
-        reject();
-      });
+    // 0 = counts only
+    if (season === 0) {
+      store.getKey('submissionCounts')
+        .then(stats => {
+          resolve(stats);
+        }, () => {
+          reject();
+        });
+    }
+
+    else {
+      store.getKey(`season${season}`)
+        .then(subs => {
+          resolve({
+            message: 'ok',
+            data: subs
+          });
+        }, () => {
+          reject();
+        });
+    }
   });
 };
 
@@ -109,31 +136,77 @@ const queryDatabase = (query, limit, subCounts) => {
         return;
       }
 
-      // get last updated date from store
-      store.getKey('lastUpdated')
-        .then((date) => {
-          if (date < meta.lastUpdated) {
-            // data in DB is newer
+      if (!subCounts) {
 
-            _getSubmissionsFromDB(query, limit, subCounts, meta.lastUpdated)
-              .then(result => {
+        // get data for a specific season
+        if (query.season !== 0) {
+          _getSubmissionsFromStore(query.season)
+            .then(res => {
+              const result = JSON.parse(res);
+
+              if (result.lastUpdated >= meta.lastUpdated) {
                 resolve({
                   status: 'ok',
                   message: result.message,
                   lastUpdated: meta.lastUpdated,
                   data: result.data
                 });
-              }, () => reject({
-                status: 'error',
-                message: 'Could not query database'
-              }));
-          }
+              }
 
-          else {
-            // data in store is up-to-date
+              else {
+                _getSubmissionsFromDB(query, limit, false, meta.lastUpdated)
+                  .then(result => {
+                    resolve({
+                      status: 'ok',
+                      message: result.message,
+                      lastUpdated: meta.lastUpdated,
+                      data: result.data
+                    });
+                  }, () => reject({
+                    status: 'error',
+                    message: 'Could not query database'
+                  }));
+              }
+            }, () => reject({
+              status: 'error',
+              message: 'Could not query store'
+            })
+            );
+        }
 
-            if (!subCounts) {
-              _getSubmissionsFromDB(query, limit, false, meta.lastUpdated)
+        // get data for all seasons (currently not supported by store)
+        else {
+          _getSubmissionsFromDB(query, limit, false, meta.lastUpdated)
+            .then(result => {
+              resolve({
+                status: 'ok',
+                message: result.message,
+                lastUpdated: meta.lastUpdated,
+                data: result.data
+              });
+            }, () => reject({
+              status: 'error',
+              message: 'Could not query database'
+            }));
+        }
+      }
+
+      else {
+        _getSubmissionsFromStore(0)
+          .then(res => {
+            const result = JSON.parse(res);
+
+            if (result.lastUpdated >= meta.lastUpdated) {
+              resolve({
+                status: 'ok',
+                message: 'submission counts only',
+                lastUpdated: meta.lastUpdated,
+                data: result.data
+              });
+            }
+
+            else {
+              _getSubmissionsFromDB(query, limit, true, meta.lastUpdated)
                 .then(result => {
                   resolve({
                     status: 'ok',
@@ -146,47 +219,12 @@ const queryDatabase = (query, limit, subCounts) => {
                   message: 'Could not query database'
                 }));
             }
-
-            else {
-              _getSubmissionCountsFromStore()
-                .then(result => {
-                  resolve({
-                    status: 'ok',
-                    message: 'submission counts only',
-                    lastUpdated: meta.lastUpdated,
-                    data: JSON.parse(result)
-                  });
-                }, () => reject({
-                  status: 'error',
-                  message: 'Could not query store'
-                }));
-            }
-          }
-        }, () => {
-          // can't get last updated date from store, continue using DB
-
-          if (!subCounts) {
-            _getSubmissionsFromDB(query, limit, subCounts, meta.lastUpdated)
-              .then(result => {
-                resolve({
-                  status: 'ok',
-                  message: result.message,
-                  lastUpdated: meta.lastUpdated,
-                  data: result.data
-                });
-              }, () => reject({
-                status: 'error',
-                message: 'Could not query database'
-              }));
-          }
-
-          else {
-            reject({
-              status: 'ok',
-              message: 'Could not query store',
-            });
-          }
-        });
+          }, () => reject({
+            status: 'error',
+            message: 'Could not query store'
+          })
+          );
+      }
     });
   });
 };
