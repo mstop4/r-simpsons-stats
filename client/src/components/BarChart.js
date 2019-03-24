@@ -95,7 +95,7 @@ class BarChart extends Component {
         if (this.submissionSequence[season][episode].length === 0) {
           this.initSubmissionSequence(season, episode, this.seasonData[season].numEpisodes);
         }
-        
+
         resolve();
       }
   
@@ -131,8 +131,6 @@ class BarChart extends Component {
         const newData = this.updateChartData(true, this.state.countData, seasonClicked);
         const randomEpisode = intRandomRange(0, this.state.seasonData[seasonClicked].numEpisodes-1);
 
-        console.log(seasonClicked, randomEpisode);
-
         if (this.state.episodeData[seasonClicked] && this.state.episodeData[seasonClicked][randomEpisode]) {
           console.log('has data');
           this.updateBackground(true, seasonClicked, randomEpisode, this.state.episodeData);
@@ -160,6 +158,52 @@ class BarChart extends Component {
               chartTotal: newData.chartTotal,
               seasonNum: seasonClicked+1,
               seasonDetails: true
+            });
+          });
+        }
+      }
+
+      else {
+        this.updateBackground(false, null, null, null);
+      }
+    }
+
+    else {
+      let episodeClicked = null;
+
+      if (elems && elems.length > 0) {
+        episodeClicked = elems[0]._index;
+      }
+
+      else {
+        const mousePoint = Chart.helpers.getRelativePosition(event, this.myChart.chart);
+
+        if (mousePoint.y >= this.myChart.scales['x-axis-0'].top) {
+          episodeClicked = this.myChart.scales['x-axis-0'].getValueForPixel(mousePoint.x);
+        }
+
+        else {
+          episodeClicked = null;
+        }
+      }
+
+      if (episodeClicked !== null) {
+        if (this.state.episodeData[this.state.seasonNum-1] && this.state.episodeData[this.state.seasonNum-1][episodeClicked]) {
+          console.log('has data');
+          this.updateBackground(true, this.state.seasonNum-1, episodeClicked, this.state.episodeData);
+        }
+
+        else {
+          console.log('has no data');
+          fetch(`/submissions?season=${this.state.seasonNum}&episode=${episodeClicked+1}seasonstats=false`)
+          .then(res => res.json())
+          .then(seasonData => {
+            const newEpisodeData = this.addEpisodeSubmissions(seasonData.data, this.state.seasonNum-1, episodeClicked);
+            this.initSubmissionSequence(this.state.seasonNum-1, episodeClicked, seasonData.data.length);
+            this.updateBackground(true, this.state.seasonNum-1, episodeClicked, newEpisodeData);
+
+            this.setState({
+              episodeData: newEpisodeData
             });
           });
         }
