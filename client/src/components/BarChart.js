@@ -76,26 +76,62 @@ class BarChart extends Component {
     this.submissionSequence[season][episode] = shuffle(this.submissionSequence[season][episode]);
   }
 
+  testBackground = (mediaLink) => {
+    return new Promise((resolve, reject) => {
+      if (!mediaLink) {
+        reject(false);
+      }
+
+      else {
+        console.log(mediaLink);
+        fetch(mediaLink, { method: 'HEAD', mode: 'cors' })
+          .then(res => {
+
+            console.log(res.status, res.headers.get('content-type'), res.url);
+
+            if (res.status === '200' &&
+              /image\//.test(res.headers.get('content-type')) &&
+              res.url !== 'http://i.imgur.com/removed.png') {
+              
+                console.log('ok');
+              resolve(true);
+            }
+
+            else {
+              console.log('no image');
+              reject(false);
+            }
+          });
+      }
+    });
+  }
+
+  findValidBackground = async (season, episode, submissions) => {
+    while (this.submissionSequence[season][episode].length > 0) {
+      const i = this.submissionSequence[season][episode].pop();
+      const curSubmission = submissions[season][episode][i];
+
+      try {
+        await this.testBackground(curSubmission.mediaLink);
+        this.chartContainerRef.current.style.backgroundImage = `linear-gradient(#ffffffc0, #ffffffc0), url(${curSubmission.mediaLink})`;
+        break;
+      } 
+      
+      catch (error) {
+      }
+
+      console.log('adasda');
+    }
+
+    if (this.submissionSequence[season][episode].length === 0) {
+      this.initSubmissionSequence(season, episode, this.seasonData[season].numEpisodes);
+    }
+  }
+
   updateBackground = (on, season, episode, submissions) => {
     return new Promise((resolve, reject) => {
       if (on) {
-        // TODO: use HEAD request to verify if URL is an image
-        const isImage = /\.(jpeg|jpg|gif|png)$/;
-  
-        while (this.submissionSequence[season][episode].length > 0) {
-          const i = this.submissionSequence[season][episode].pop();
-          const curSubmission = submissions[season][episode][i];
-  
-          if (curSubmission.mediaLink && isImage.test(curSubmission.mediaLink)) {
-            this.chartContainerRef.current.style.backgroundImage = `linear-gradient(#ffffffc0, #ffffffc0), url(${curSubmission.mediaLink})`;
-            break;
-          }
-        }
-  
-        if (this.submissionSequence[season][episode].length === 0) {
-          this.initSubmissionSequence(season, episode, this.seasonData[season].numEpisodes);
-        }
-
+        this.findValidBackground(season, episode, submissions);
         resolve();
       }
   
@@ -108,6 +144,8 @@ class BarChart extends Component {
 
   chartClick = (event, elems) => {
     // TODO: make this async
+
+    // in season mode
     if (!this.state.seasonDetails) {
       let seasonClicked = null;
 
@@ -168,6 +206,7 @@ class BarChart extends Component {
       }
     }
 
+    // in episode mode
     else {
       let episodeClicked = null;
 
@@ -267,6 +306,17 @@ class BarChart extends Component {
         }
       }
     });
+
+    fetch('http://i.imgur.com/PemqiAka.jpg', {
+      method: 'HEAD',
+      mode: 'no-cors'
+    })
+      .then(res => {
+        console.log(res);
+      })
+      .catch(error => {
+        console.log('.o.')
+      });
 
     fetch('/seasons')
       .then(res => res.json())
