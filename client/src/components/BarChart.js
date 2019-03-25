@@ -76,70 +76,69 @@ class BarChart extends Component {
     this.submissionSequence[season][episode] = shuffle(this.submissionSequence[season][episode]);
   }
 
-  testBackground = (mediaLink) => {
-    return new Promise((resolve, reject) => {
-      if (!mediaLink) {
-        reject(false);
-      }
-
-      else {
-        console.log(mediaLink);
-        fetch(mediaLink, { method: 'HEAD', mode: 'cors' })
-          .then(res => {
-
-            console.log(res.status, res.headers.get('content-type'), res.url);
-
-            if (res.status === '200' &&
-              /image\//.test(res.headers.get('content-type')) &&
-              res.url !== 'http://i.imgur.com/removed.png') {
-              
-                console.log('ok');
-              resolve(true);
-            }
-
-            else {
-              console.log('no image');
-              reject(false);
-            }
-          });
-      }
-    });
-  }
-
-  findValidBackground = async (season, episode, submissions) => {
+  findBackground = async (season, episode, submissions) => {
     while (this.submissionSequence[season][episode].length > 0) {
       const i = this.submissionSequence[season][episode].pop();
       const curSubmission = submissions[season][episode][i];
 
-      try {
-        await this.testBackground(curSubmission.mediaLink);
-        this.chartContainerRef.current.style.backgroundImage = `linear-gradient(#ffffffc0, #ffffffc0), url(${curSubmission.mediaLink})`;
-        break;
-      } 
-      
-      catch (error) {
+      if (curSubmission.mediaLink) {
+        const result = await this.testImage(curSubmission.mediaLink);
+        if (result) break;
       }
-
-      console.log('adasda');
     }
 
     if (this.submissionSequence[season][episode].length === 0) {
-      this.initSubmissionSequence(season, episode, this.seasonData[season].numEpisodes);
+      this.initSubmissionSequence(season, episode, this.state.episodeData[season][episode].length);
     }
   }
 
-  updateBackground = (on, season, episode, submissions) => {
-    return new Promise((resolve, reject) => {
-      if (on) {
-        this.findValidBackground(season, episode, submissions);
-        resolve();
+  testImage = (url) => {
+    return new Promise(resolve => {
+      let realUrl = url;
+
+      // If it's from Youtube, chances are it's not an image 
+      if (/youtube/i.test(url)) {
+        resolve(false);
+        return;
       }
+
+      // Convert http(s)://imgur.com links to http://i.imgur.com links if necessary 
+      const isImgurLink = /https*:\/\/imgur\.com\/(\S+)/;
+      if (isImgurLink.test(url)) {
+        isImgurLink.lastIndex = 0;
+        const slug = isImgurLink.exec(url)[1];
+
+        realUrl = `http://i.imgur.com/${slug}.gif`;
+      }
+
+      // TODO: handle Imgur .gifv links (e.g. http://i.imgur.com/eFkL0Cc.gifv)
+      // TODO: handle Frinkiac /caption links (e.g. https://frinkiac.com/caption/S08E01/911927)
+
+      console.log(realUrl);
+
+      const img = new Image();
+      img.onload = () => {
+        this.chartContainerRef.current.style.backgroundImage = `linear-gradient(#ffffffc0, #ffffffc0), url(${realUrl})`;
+        resolve(true);
+      };
   
-      else {
-        this.chartContainerRef.current.style.backgroundImage = '';
-        resolve();
-      }
+      img.onerror = () => {
+        resolve(false);
+      };
+  
+      img.src = realUrl;
     });
+  }
+
+  updateBackground = (on, season, episode, submissions) => {
+    if (on) {
+      this.findBackground(season, episode, submissions)
+        .then(() => {});
+    }
+
+    else {
+      this.chartContainerRef.current.style.backgroundImage = '';
+    }
   }
 
   chartClick = (event, elems) => {
@@ -255,6 +254,9 @@ class BarChart extends Component {
   }
 
   componentDidMount = () => {
+    //fetch('http://i.imgur.com/PemqiAk.jpg')
+    //fetch('https://i.redd.it/0ocj1lm658o21.jpg')
+
     const seasonLabels = [];
     for (let i = 0; i < 1; i++) {
       seasonLabels[i] = (i+1).toString();
@@ -306,17 +308,6 @@ class BarChart extends Component {
         }
       }
     });
-
-    fetch('http://i.imgur.com/PemqiAka.jpg', {
-      method: 'HEAD',
-      mode: 'no-cors'
-    })
-      .then(res => {
-        console.log(res);
-      })
-      .catch(error => {
-        console.log('.o.')
-      });
 
     fetch('/seasons')
       .then(res => res.json())
