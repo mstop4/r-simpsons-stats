@@ -142,7 +142,6 @@ class BarChart extends Component {
   }
 
   chartClick = (event, elems) => {
-    // TODO: make this async
 
     // in season mode
     if (!this.state.seasonDetails) {
@@ -166,11 +165,11 @@ class BarChart extends Component {
       
       if (seasonClicked !== null) {
         const newData = this.updateChartData(true, this.state.countData, seasonClicked);
-        const randomEpisode = intRandomRange(0, this.state.seasonData[seasonClicked].numEpisodes-1);
+        // const randomEpisode = intRandomRange(0, this.state.seasonData[seasonClicked].numEpisodes-1);
 
-        if (this.state.episodeData[seasonClicked] && this.state.episodeData[seasonClicked][randomEpisode]) {
-          console.log('has data');
-          this.updateBackground(true, seasonClicked, randomEpisode, this.state.episodeData);
+        // if (this.state.episodeData[seasonClicked] && this.state.episodeData[seasonClicked][randomEpisode]) {
+        //   console.log('has data');
+        //   this.updateBackground(true, seasonClicked, randomEpisode, this.state.episodeData);
 
           this.setState({
             chartData: newData.chartData,
@@ -178,30 +177,30 @@ class BarChart extends Component {
             seasonNum: seasonClicked+1,
             seasonDetails: true
           });
-        }
+        // }
 
-        else {
-          console.log('has no data');
-          fetch(`/submissions?season=${seasonClicked+1}&episode=${randomEpisode+1}seasonstats=false`)
-          .then(res => res.json())
-          .then(seasonData => {
-            const newEpisodeData = this.addEpisodeSubmissions(seasonData.data, seasonClicked, randomEpisode);
-            this.initSubmissionSequence(seasonClicked, randomEpisode, seasonData.data.length);
-            this.updateBackground(true, seasonClicked, randomEpisode, newEpisodeData);
+        // else {
+        //   console.log('has no data');
+        //   fetch(`/submissions?season=${seasonClicked+1}&episode=${randomEpisode+1}seasonstats=false`)
+        //   .then(res => res.json())
+        //   .then(seasonData => {
+        //     const newEpisodeData = this.addEpisodeSubmissions(seasonData.data, seasonClicked, randomEpisode);
+        //     this.initSubmissionSequence(seasonClicked, randomEpisode, seasonData.data.length);
+        //     this.updateBackground(true, seasonClicked, randomEpisode, newEpisodeData);
 
-            this.setState({
-              episodeData: newEpisodeData,
-              chartData: newData.chartData,
-              chartTotal: newData.chartTotal,
-              seasonNum: seasonClicked+1,
-              seasonDetails: true
-            });
-          });
-        }
+        //     this.setState({
+        //       episodeData: newEpisodeData,
+        //       chartData: newData.chartData,
+        //       chartTotal: newData.chartTotal,
+        //       seasonNum: seasonClicked+1,
+        //       seasonDetails: true
+        //     });
+        //   });
+        // }
       }
 
       else {
-        this.updateBackground(false, null, null, null);
+        //this.updateBackground(false, null, null, null);
       }
     }
 
@@ -226,29 +225,29 @@ class BarChart extends Component {
       }
 
       if (episodeClicked !== null) {
-        if (this.state.episodeData[this.state.seasonNum-1] && this.state.episodeData[this.state.seasonNum-1][episodeClicked]) {
-          console.log('has data');
-          this.updateBackground(true, this.state.seasonNum-1, episodeClicked, this.state.episodeData);
-        }
+        // if (this.state.episodeData[this.state.seasonNum-1] && this.state.episodeData[this.state.seasonNum-1][episodeClicked]) {
+        //   console.log('has data');
+        //   this.updateBackground(true, this.state.seasonNum-1, episodeClicked, this.state.episodeData);
+        // }
 
-        else {
-          console.log('has no data');
-          fetch(`/submissions?season=${this.state.seasonNum}&episode=${episodeClicked+1}seasonstats=false`)
-          .then(res => res.json())
-          .then(seasonData => {
-            const newEpisodeData = this.addEpisodeSubmissions(seasonData.data, this.state.seasonNum-1, episodeClicked);
-            this.initSubmissionSequence(this.state.seasonNum-1, episodeClicked, seasonData.data.length);
-            this.updateBackground(true, this.state.seasonNum-1, episodeClicked, newEpisodeData);
+        // else {
+        //   console.log('has no data');
+        //   fetch(`/submissions?season=${this.state.seasonNum}&episode=${episodeClicked+1}seasonstats=false`)
+        //   .then(res => res.json())
+        //   .then(seasonData => {
+        //     const newEpisodeData = this.addEpisodeSubmissions(seasonData.data, this.state.seasonNum-1, episodeClicked);
+        //     this.initSubmissionSequence(this.state.seasonNum-1, episodeClicked, seasonData.data.length);
+        //     this.updateBackground(true, this.state.seasonNum-1, episodeClicked, newEpisodeData);
 
-            this.setState({
-              episodeData: newEpisodeData
-            });
-          });
-        }
+        //     this.setState({
+        //       episodeData: newEpisodeData
+        //     });
+        //   });
+        // }
       }
 
       else {
-        this.updateBackground(false, null, null, null);
+        // this.updateBackground(false, null, null, null);
       }
     }
   }
